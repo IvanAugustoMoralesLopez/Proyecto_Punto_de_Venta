@@ -1,18 +1,164 @@
-import tkinter as tk 
-import funciones  
+# main.py
+import tkinter as tk
+from tkinter import ttk  # Necesitamos ttk para el Treeview
+from tkinter import messagebox # Para los mensajes de confirmación
+import funciones
 
-funciones.crear_bd()
-
-# Artículos de prueba (solo una vez)
-try:
-    funciones.agregar_articulo("001", "Pepsi 1.5L", 450.0, 30)
-    funciones.agregar_articulo("002", "Agua 500ml", 300.0, 50)
-    funciones.agregar_articulo("003", "Coca-Cola 2L", 500.0, 25)
-except:
-    pass  # Por si ya existen
+# --- VENTANA PRINCIPAL ---
 
 root = tk.Tk()
 root.title("Punto de Venta")
+
+# --- LÓGICA DE LA VENTANA DE INVENTARIO ---
+
+def abrir_ventana_inventario():
+    """Crea y muestra la ventana para gestionar el inventario."""
+    inventario_win = tk.Toplevel(root)
+    inventario_win.title("Gestión de Inventario")
+    inventario_win.geometry("900x600")
+
+    # --- Frames para organizar la ventana ---
+    frame_lista = tk.Frame(inventario_win, bd=2, relief="groove")
+    frame_lista.pack(pady=10, padx=10, fill="both", expand=True)
+
+    frame_controles = tk.Frame(inventario_win, bd=2, relief="groove")
+    frame_controles.pack(pady=10, padx=10, fill="x")
+
+    # --- Treeview para mostrar la lista de artículos ---
+    columnas = ("id", "codigo", "descripcion", "precio", "stock")
+    tree = ttk.Treeview(frame_lista, columns=columnas, show="headings")
+    
+    # Definir encabezados
+    tree.heading("id", text="ID")
+    tree.heading("codigo", text="Código")
+    tree.heading("descripcion", text="Descripción")
+    tree.heading("precio", text="Precio")
+    tree.heading("stock", text="Stock")
+
+    # Ajustar ancho de columnas
+    tree.column("id", width=50, anchor=tk.CENTER)
+    tree.column("codigo", width=100, anchor=tk.CENTER)
+    tree.column("descripcion", width=350)
+    tree.column("precio", width=100, anchor=tk.E) # Alineado a la derecha (East)
+    tree.column("stock", width=100, anchor=tk.CENTER)
+    
+    tree.pack(fill="both", expand=True)
+
+    # --- Campos de entrada y etiquetas en el frame de controles ---
+    tk.Label(frame_controles, text="Código:").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+    entry_codigo = tk.Entry(frame_controles, width=30)
+    entry_codigo.grid(row=0, column=1, padx=5, pady=5)
+    
+    # Campo oculto para guardar el ID del artículo seleccionado
+    entry_id = tk.Entry(frame_controles)
+
+    tk.Label(frame_controles, text="Descripción:").grid(row=1, column=0, padx=5, pady=5, sticky="w")
+    entry_descripcion = tk.Entry(frame_controles, width=50)
+    entry_descripcion.grid(row=1, column=1, padx=5, pady=5, columnspan=2)
+
+    tk.Label(frame_controles, text="Precio:").grid(row=0, column=2, padx=5, pady=5, sticky="w")
+    entry_precio = tk.Entry(frame_controles, width=20)
+    entry_precio.grid(row=0, column=3, padx=5, pady=5)
+
+    tk.Label(frame_controles, text="Stock:").grid(row=1, column=3, padx=5, pady=5, sticky="w")
+    entry_stock = tk.Entry(frame_controles, width=20)
+    entry_stock.grid(row=1, column=4, padx=5, pady=5)
+    
+    # --- Funciones internas de la ventana de inventario ---
+    
+    def cargar_articulos():
+        """Limpia el Treeview y carga todos los artículos de la BD."""
+        # Limpiar tabla
+        for item in tree.get_children():
+            tree.delete(item)
+        # Cargar datos
+        articulos = funciones.listar_articulos()
+        for art in articulos:
+            # Formatear el precio para que se muestre con dos decimales
+            precio_formateado = f"{art[3]:.2f}"
+            tree.insert("", tk.END, values=(art[0], art[1], art[2], precio_formateado, art[4]))
+    
+    def limpiar_campos():
+        """Limpia los campos de entrada y la selección."""
+        entry_id.delete(0, tk.END)
+        entry_codigo.delete(0, tk.END)
+        entry_descripcion.delete(0, tk.END)
+        entry_precio.delete(0, tk.END)
+        entry_stock.delete(0, tk.END)
+        tree.selection_remove(tree.selection()) # Deseleccionar fila
+        entry_codigo.focus()
+
+    def seleccionar_articulo(event):
+        """Al seleccionar un artículo, llena los campos con sus datos."""
+        item_seleccionado = tree.selection()
+        if not item_seleccionado:
+            return
+        
+        item = tree.item(item_seleccionado)
+        valores = item['values']
+
+        limpiar_campos() # Limpia por si acaso
+        
+        entry_id.insert(0, valores[0])
+        entry_codigo.insert(0, valores[1])
+        entry_descripcion.insert(0, valores[2])
+        entry_precio.insert(0, valores[3])
+        entry_stock.insert(0, valores[4])
+    
+    tree.bind("<<TreeviewSelect>>", seleccionar_articulo)
+
+    def guardar_articulo():
+        """Guarda un artículo nuevo o edita uno existente."""
+        # Validaciones básicas
+        if not entry_codigo.get() or not entry_descripcion.get() or not entry_precio.get() or not entry_stock.get():
+            messagebox.showerror("Error", "Todos los campos son obligatorios.", parent=inventario_win)
+            return
+
+        try:
+            precio = float(entry_precio.get())
+            stock = int(entry_stock.get())
+        except ValueError:
+            messagebox.showerror("Error", "Precio y Stock deben ser números válidos.", parent=inventario_win)
+            return
+        
+        id_articulo = entry_id.get()
+        if id_articulo: # Si hay un ID, es una edición
+            funciones.editar_articulo(id_articulo, entry_codigo.get(), entry_descripcion.get(), precio, stock)
+        else: # Si no hay ID, es una creación
+            funciones.agregar_articulo(entry_codigo.get(), entry_descripcion.get(), precio, stock)
+        
+        cargar_articulos()
+        limpiar_campos()
+
+    def eliminar_articulo():
+        """Elimina el artículo seleccionado."""
+        if not entry_id.get():
+            messagebox.showerror("Error", "Debe seleccionar un artículo para eliminar.", parent=inventario_win)
+            return
+        
+        confirmar = messagebox.askyesno("Confirmar", "¿Está seguro de que desea eliminar este artículo?", parent=inventario_win)
+        if confirmar:
+            funciones.borrar_articulo(entry_id.get())
+            cargar_articulos()
+            limpiar_campos()
+
+    # --- Botones en el frame de controles ---
+    btn_guardar = tk.Button(frame_controles, text="Guardar", command=guardar_articulo, bg="#B7E998")
+    btn_guardar.grid(row=0, column=5, padx=10, pady=5, sticky="ew")
+
+    btn_eliminar = tk.Button(frame_controles, text="Eliminar", command=eliminar_articulo, bg="#F8A894")
+    btn_eliminar.grid(row=1, column=5, padx=10, pady=5, sticky="ew")
+
+    btn_limpiar = tk.Button(frame_controles, text="Limpiar Campos", command=limpiar_campos)
+    btn_limpiar.grid(row=0, column=6, rowspan=2, padx=10, pady=5, sticky="ns")
+
+    # Cargar los datos iniciales al abrir la ventana
+    cargar_articulos()
+
+# --- INTERFAZ PRINCIPAL (código existente) ---
+
+# ... (El resto de tu código de la ventana principal va aquí, sin cambios)
+# ... A continuación pego el resto del código para que sea un solo bloque ...
 
 def buscar_en_bd():
     limpiar_resultados()
@@ -35,7 +181,7 @@ def buscar_en_bd():
 def limpiar_resultados(): 
     for widget in info_articulos.winfo_children():
         info_articulos.grid_columnconfigure(info_articulos.children[widget._name], weight=1)
-        if widget.grid_info()['row'] != 0:  # No borra la fila 0 (encabezados)
+        if widget.grid_info()['row'] != 0:
             widget.destroy()
 
 def mostrar_encabezados():
@@ -46,19 +192,16 @@ def mostrar_encabezados():
         label.grid(row=0, column=i, sticky="nsew")
         info_articulos.grid_columnconfigure(i, weight=1)
 
-# Detectar resolución de pantalla
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 root.geometry(f"{screen_width}x{screen_height}")
 
-# Frames principales
 header_opciones = tk.Frame(bg="#ADB2B4", height=50, bd=3, relief="ridge")
 parte_busqueda = tk.Frame(root, bg="#CFCFCF", height=40)
 body = tk.Frame(root, bg="#CFCFCF") 
 info_articulos = tk.Frame(root, bg="#F5F5F5", bd=1, relief="solid")
 bloque_totales = tk.Frame(body, bg="#C2DBE4", bd=1, relief="solid")
 
-# Posicionamiento
 header_opciones.pack(fill="x")
 parte_busqueda.pack(fill="x")
 body.pack(fill="both", expand=True)
@@ -66,24 +209,24 @@ body.pack(fill="both", expand=True)
 info_articulos.place(relx=0.02, rely=0.143, relwidth=0.78, relheight=0.828)
 bloque_totales.place(relx=0.81, rely=0.071, relwidth=0.16, relheight=0.143) 
 
-# Crear encabezados visibles desde el inicio
 mostrar_encabezados()
 
-# Buscar
 btn_buscar = tk.Button(root, text="Buscar", command=buscar_en_bd, bg="#DDEEFF")
 btn_buscar.place(relx=0.42, rely=0.071, relwidth=0.08)
 
 barra_busca = tk.Entry(root, bd=3, relief="ridge")
 barra_busca.place(relx=0.10, rely=0.071, relwidth=0.3)
 
-# Cantidad
 texto_cant = tk.Label(root, text="Cantidad:")
 texto_cant.place(relx=0.81, rely=0.071)
 
 barra_cant = tk.Entry(root, bd=3, relief="ridge")  
 barra_cant.place(relx=0.87, rely=0.071, relwidth=0.1)
 
-# Botones en el header
+# --- AÑADIR EL NUEVO BOTÓN DE INVENTARIO AQUÍ ---
+btn_inventario = tk.Button(header_opciones, text="Inventario", padx=10, pady=1, font=("Inter", 8), command=abrir_ventana_inventario)
+btn_inventario.pack(side="left", padx=5, pady=5)
+
 buttons = ["Ventas", "Crear Ticket/s"]
 for text in buttons:
     btn = tk.Button(header_opciones, text=text, padx=10, pady=1, font=("Inter", 8))
@@ -92,7 +235,6 @@ for text in buttons:
 btn_cerrar = tk.Button(header_opciones, text="Cerrar Caja", padx=10, pady=1, bg="#ffdddd", font=("Inter", 8))
 btn_cerrar.pack(side="right", padx=10, pady=1)
 
-# Totales de Venta
 texto_total_venta = tk.Label(body, text="Totales de Venta:")
 texto_total_venta.place(relx=0.81, rely=0.030)
 
@@ -114,14 +256,11 @@ valor_desc.place(relx=0.625, rely=0.4)
 valor_tot = tk.Label(bloque_totales, text="$0.00", bg="#CFCFCF", bd=1, relief="solid")
 valor_tot.place(relx=0.625, rely=0.7)
 
-
 def ventana_agregar_producto():
     ventana=tk.Toplevel(root)
     ventana.title("agregar productos")
     ventana.geometry("300x250")
     ventana.resizable(False,False)
-
-    #Etiquetas y campos que vamos a ocupar 
 
     tk.Label(ventana, text="codigo").pack(pady=5)
     entry_codigo=tk.Entry(ventana)
@@ -145,25 +284,15 @@ def ventana_agregar_producto():
             descripcion = entry_descripcion.get()
             precio = float(entry_precio.get())
             stock = int(entry_stock.get())
-
             funciones.agregar_articulo(codigo, descripcion, precio, stock)
-
-            # Mensaje de éxito
-            exito = tk.Toplevel(root)
-            exito.title("Éxito")
-            tk.Label(exito, text="✅ Producto agregado correctamente").pack(padx=20, pady=20)
-            tk.Button(exito, text="OK", command=exito.destroy).pack(pady=10)
-
+            messagebox.showinfo("Éxito", "✅ Producto agregado correctamente")
             ventana.destroy()
-            buscar_en_bd()  # actualiza vista si hay algo buscado
-        except:
-            error = tk.Toplevel(root)
-            error.title("Error")
-            tk.Label(error, text="❌ Datos inválidos").pack(padx=20, pady=20)
-            tk.Button(error, text="OK", command=error.destroy).pack(pady=10)
+            buscar_en_bd()
+        except Exception as e:
+            messagebox.showerror("Error", f"❌ Datos inválidos: {e}")
+    
     tk.Button(ventana, text="Agregar", command=guardar_producto, bg="#B7E998").pack(pady=15) 
     
-# Botones de acción
 btn_presupuesto = tk.Button(body, text="Presupuesto", padx=10, pady=1, bg="#C3C5C2", font=("Inter", 8), bd=1, relief="solid")
 btn_presupuesto.place(relx=0.81, rely=0.286, relwidth=0.16, relheight=0.071)
 
@@ -176,12 +305,7 @@ btn_nueva_venta.place(relx=0.81, rely=0.514, relwidth=0.16, relheight=0.071)
 btn_eliminar_articulo = tk.Button(body, text="Eliminar articulo", padx=10, pady=1, bg="#F8A894", font=("Inter", 8), bd=1, relief="solid")
 btn_eliminar_articulo.place(relx=0.81, rely=0.628, relwidth=0.16, relheight=0.071) 
 
-btn_agregar_producto = tk.Button( body, text="Agregar Producto", padx=10, pady=1, bg="#A8E6CF", font=("Inter", 8), bd=1, relief="solid", command=ventana_agregar_producto  # Esta es la función que se llama
-)
+btn_agregar_producto = tk.Button( body, text="Agregar Producto", padx=10, pady=1, bg="#A8E6CF", font=("Inter", 8), bd=1, relief="solid", command=ventana_agregar_producto)
 btn_agregar_producto.place(relx=0.81, rely=0.742, relwidth=0.16, relheight=0.071)
-
-
-
-
 
 root.mainloop()
