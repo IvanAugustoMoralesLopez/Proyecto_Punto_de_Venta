@@ -1,11 +1,11 @@
 import pyodbc
-from config import STRING_DE_CONEXION 
+from config import CONNECTION_STRING
 
 
 def get_db_connection():
     
     try:
-        conn = pyodbc.connect(STRING_DE_CONEXION)
+        conn = pyodbc.connect(CONNECTION_STRING)
         return conn, conn.cursor()
     except Exception as e:
         print(f"Error al conectar con la base de datos: {e}")
@@ -43,7 +43,6 @@ def buscar_articulo(texto_busqueda):
         return []
     finally:
         conn.close()
-
 
 def listar_articulos():
     conn, cursor = get_db_connection()
