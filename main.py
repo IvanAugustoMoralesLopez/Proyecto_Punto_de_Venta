@@ -1,15 +1,13 @@
-# main.py
+
 import tkinter as tk
-from tkinter import ttk  # Necesitamos ttk para el Treeview
-from tkinter import messagebox # Para los mensajes de confirmación
+from tkinter import ttk  
+from tkinter import messagebox 
 import funciones
 
-# --- VENTANA PRINCIPAL ---
 
 root = tk.Tk()
 root.title("Punto de Venta")
 
-# --- LÓGICA DE LA VENTANA DE INVENTARIO ---
 
 def abrir_ventana_inventario():
     """Crea y muestra la ventana para gestionar el inventario."""
@@ -28,7 +26,7 @@ def abrir_ventana_inventario():
     columnas = ("id", "codigo", "descripcion", "precio", "stock")
     tree = ttk.Treeview(frame_lista, columns=columnas, show="headings")
     
-    # Definir encabezados
+    # encabezados
     tree.heading("id", text="ID")
     tree.heading("codigo", text="Código")
     tree.heading("descripcion", text="Descripción")
@@ -39,7 +37,7 @@ def abrir_ventana_inventario():
     tree.column("id", width=50, anchor=tk.CENTER)
     tree.column("codigo", width=100, anchor=tk.CENTER)
     tree.column("descripcion", width=350)
-    tree.column("precio", width=100, anchor=tk.E) # Alineado a la derecha (East)
+    tree.column("precio", width=100, anchor=tk.E) # Alineado a la derecha 
     tree.column("stock", width=100, anchor=tk.CENTER)
     
     tree.pack(fill="both", expand=True)
@@ -108,7 +106,7 @@ def abrir_ventana_inventario():
     tree.bind("<<TreeviewSelect>>", seleccionar_articulo)
 
     def guardar_articulo():
-        """Guarda un artículo nuevo o edita uno existente."""
+        
         # Validaciones básicas
         if not entry_codigo.get() or not entry_descripcion.get() or not entry_precio.get() or not entry_stock.get():
             messagebox.showerror("Error", "Todos los campos son obligatorios.", parent=inventario_win)
@@ -131,7 +129,7 @@ def abrir_ventana_inventario():
         limpiar_campos()
 
     def eliminar_articulo():
-        """Elimina el artículo seleccionado."""
+        
         if not entry_id.get():
             messagebox.showerror("Error", "Debe seleccionar un artículo para eliminar.", parent=inventario_win)
             return
@@ -155,10 +153,6 @@ def abrir_ventana_inventario():
     # Cargar los datos iniciales al abrir la ventana
     cargar_articulos()
 
-# --- INTERFAZ PRINCIPAL (código existente) ---
-
-# ... (El resto de tu código de la ventana principal va aquí, sin cambios)
-# ... A continuación pego el resto del código para que sea un solo bloque ...
 
 def buscar_en_bd():
     limpiar_resultados()
@@ -223,7 +217,7 @@ texto_cant.place(relx=0.81, rely=0.071)
 barra_cant = tk.Entry(root, bd=3, relief="ridge")  
 barra_cant.place(relx=0.87, rely=0.071, relwidth=0.1)
 
-# --- AÑADIR EL NUEVO BOTÓN DE INVENTARIO AQUÍ ---
+
 btn_inventario = tk.Button(header_opciones, text="Inventario", padx=10, pady=1, font=("Inter", 8), command=abrir_ventana_inventario)
 btn_inventario.pack(side="left", padx=5, pady=5)
 
