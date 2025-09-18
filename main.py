@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk  
 from tkinter import messagebox 
 import funciones
+from interfaz_tickets import creartickets
 
 
 root = tk.Tk()
@@ -221,10 +222,13 @@ barra_cant.place(relx=0.87, rely=0.071, relwidth=0.1)
 btn_inventario = tk.Button(header_opciones, text="Inventario", padx=10, pady=1, font=("Inter", 8), command=abrir_ventana_inventario)
 btn_inventario.pack(side="left", padx=5, pady=5)
 
-buttons = ["Ventas", "Crear Ticket/s"]
+buttons = ["Ventas", "Crear Ticket"]
 for text in buttons:
     btn = tk.Button(header_opciones, text=text, padx=10, pady=1, font=("Inter", 8))
     btn.pack(side="left", padx=5, pady=5)
+
+btn_generar_ticket = tk.Button(header_opciones, text="Generar Ticket", padx=10, pady=1, font=("Inter", 8),command=creartickets )
+btn_generar_ticket.pack(side="left", padx=8, pady=5)
 
 btn_cerrar = tk.Button(header_opciones, text="Cerrar Caja", padx=10, pady=1, bg="#ffdddd", font=("Inter", 8))
 btn_cerrar.pack(side="right", padx=10, pady=1)

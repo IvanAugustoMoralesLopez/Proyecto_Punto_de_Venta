@@ -1,15 +1,15 @@
-ENTORNO = 'instituto' 
+ENTORNO = 'local' 
 
 CONFIG_LOCAL = {
-    'server': 'localhost', 
+    'server': '(localdb)\localLucass', 
     'database': 'PuntoVenta'
 }
 
 CONFIG_INSTITUTO = {
-    'server': '192.168.219.218', 
+    'server': '192.168.1.3', 
     'database': 'PuntoVenta',                      
-    'user': 'homeUser',                      
-    'password': 'Admin'                
+    'user': 'lucas2',                      
+    'password': 'admin'                
 }
 
 
