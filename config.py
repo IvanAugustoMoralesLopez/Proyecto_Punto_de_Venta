@@ -1,15 +1,15 @@
-ENTORNO = 'local' 
+ENTORNO = 'instituto' 
 
 CONFIG_LOCAL = {
-    'server': '(localdb)\localLucass', 
+    'server': 'localhost', 
     'database': 'PuntoVenta'
 }
 
 CONFIG_INSTITUTO = {
-    'server': '192.168.1.3', 
+    'server': '192.168.219.218', 
     'database': 'PuntoVenta',                      
-    'user': 'lucas2',                      
-    'password': 'admin'                
+    'user': 'homeUser',                      
+    'password': 'Admin'                
 }
 
 
@@ -39,3 +39,4 @@ elif ENTORNO == 'instituto':
         f"UID={UID};"
         f"PWD={PWD};"
     )
+

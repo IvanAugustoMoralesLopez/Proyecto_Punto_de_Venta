@@ -86,3 +86,30 @@ def borrar_articulo(id):
         print(f"Error al borrar el artículo: {e}")
     finally:
         conn.close()
+                
+class Ticket:
+    def __init__(self, punto_venta, metodo_pago, monto, fecha, tipo_ticket, referencia):
+        self.punto_venta = punto_venta
+        self.metodo_pago = metodo_pago
+        self.monto = monto
+        self.fecha = fecha
+        self.tipo_ticket = tipo_ticket
+        self.referencia = referencia
+
+    def guardar(self):
+        conn = pyodbc.connect(CONNECTION_STRING)
+        cursor = conn.cursor()
+        query = """
+        INSERT INTO tickets (punto_venta, metodo_pago, monto, fecha, tipo_ticket, referencia)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """
+        cursor.execute(query, (
+            self.punto_venta,
+            self.metodo_pago,
+            self.monto,
+            self.fecha,
+            self.tipo_ticket,
+            self.referencia
+        ))
+        conn.commit()
+        conn.close()
