@@ -139,7 +139,7 @@ def cargar_articulos():
           ("JUG012", "Muñeca articulada con accesorios", 5800.00, 20),
           ("JUG013", "Auto a fricción metálico", 2700.00, 40),
           ("JUG014", "Pelota de fútbol infantil", 1900.00, 35),
-          ("JUG015", "Rompecabezas 500 piezas", 2400.00, 25),
+          ("JUG015", "Rompecabezas 500 piezas" , 2400.00, 25),
           ("JUG016", "Juego de mesa familiar", 6200.00, 18),
           ("JUG017", "Set de pinturas lavables", 1500.00, 50),
           ("JUG018", "Libro de cuentos ilustrado", 1800.00, 40),
@@ -169,8 +169,11 @@ def cargar_articulos():
          ]
 
         for art in articulos:
-            cursor.execute("IF NOT EXISTS (SELECT 1 FROM articulos WHERE id = ?) INSERT INTO articulos (codigo, descripcion, precio, stock) VALUES (?, ?, ?, ?, ?)", (art[0], *art))
-        
+           cursor.execute(
+           "INSERT INTO articulos (codigo, descripcion, precio, stock) VALUES (?, ?, ?, ?)",
+          art
+          )
+
         conn.commit()
         print(f"✅ Se cargaron {len(articulos)} artículos.")
     except Exception as e:
