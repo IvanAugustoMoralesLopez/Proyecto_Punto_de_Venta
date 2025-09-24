@@ -1,15 +1,16 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-import threading
 import random
 from datetime import datetime
-from config import ENTORNO
-from funciones import Ticket
+from funciones import Ticket, obtener_articulos
+
+activo = False
+segundos_restantes = 0
 
 def creartickets():
     root = tk.Tk()
-    root.title("Generador de Tickets")
-    root.geometry("400x300")
+    root.title("Generador Automático de Tickets")
+    root.geometry("400x320")
     root.resizable(False, False)
 
     # --- Punto de venta ---
@@ -18,77 +19,84 @@ def creartickets():
     combo_pv.current(0)
     combo_pv.pack(pady=5)
 
-    # --- Cantidad de tickets ---
-    tk.Label(root, text="Cantidad de Tickets a Generar:", font=("Arial", 10)).pack(pady=5)
-    entry_cantidad = tk.Entry(root, font=("Arial", 10))
-    entry_cantidad.insert(0, "100")
-    entry_cantidad.pack(pady=5)
+    # --- Botón switch ---
+    btn_toggle = tk.Button(root, text="Iniciar Generación", font=("Arial", 10), bg="#4CAF50", fg="white")
+    btn_toggle.pack(pady=20)
+
+    # --- Estado dinámico ---
+    estado_label = tk.Label(root, text="Estado: Inactivo", font=("Arial", 10))
+    estado_label.pack(pady=5)
 
     # --- Barra de progreso ---
-    tk.Label(root, text="Progreso:", font=("Arial", 10)).pack(pady=5)
-    barra_progreso = ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate")
-    barra_progreso.pack(pady=5)
+    barra = ttk.Progressbar(root, maximum=1200, length=250)
+    barra.pack(pady=5)
 
-    # --- Botón de carga ---
-    btn_iniciar = tk.Button(root, text="Iniciar Carga", font=("Arial", 10), bg="#4CAF50", fg="white", state="disabled")
-    btn_iniciar.pack(pady=10)
+    def generar_ticket(nombre_pv):
+        metodo = random.choice(["Efectivo", "Tarjeta", "Transferencia", "Mercado Pago"])
+        tipo = random.choice(["normal", "promo", "devolución"])
+        referencia = f"REF-{random.randint(100000, 999999)}"
+        fecha_actual = datetime.now()
 
-    # --- Validación dinámica ---
-    def validar_campos(*args):
-        try:
-            cantidad = int(entry_cantidad.get())
-            punto_venta = combo_pv.get()
-            if cantidad > 0 and punto_venta:
-                btn_iniciar.config(state="normal")
+        articulos_disponibles = obtener_articulos()
+        if not articulos_disponibles:
+            return
+
+        seleccionados = random.sample(articulos_disponibles, k=random.randint(3, 7))
+        detalle = []
+        monto_total = 0
+
+        for articulo in seleccionados:
+            id_articulo = articulo[0]
+            nombre_articulo = articulo[1]  # ← nombre del producto
+            precio_unitario = articulo[2]
+            cantidad = random.randint(1, 5)
+            subtotal = precio_unitario * cantidad
+            monto_total += subtotal
+            detalle.append((id_articulo, precio_unitario, cantidad, nombre_articulo))
+
+        # Crear el ticket con el monto calculado
+        ticket = Ticket(nombre_pv, metodo, int(monto_total), fecha_actual, tipo, referencia)
+        ticket.guardar()
+        ticket.guardar_detalle(detalle)
+
+    def actualizar_contador(nombre_pv):
+        global segundos_restantes
+        if activo:
+            if segundos_restantes > 0:
+                segundos_restantes -= 1
+                estado_label.config(text=f"Estado: Activo (esperando {segundos_restantes} seg)")
+                barra['value'] = delay_inicial - segundos_restantes
+                root.after(1000, lambda: actualizar_contador(nombre_pv))
             else:
-                btn_iniciar.config(state="disabled")
-        except ValueError:
-            btn_iniciar.config(state="disabled")
+                generar_ticket(nombre_pv)
+                iniciar_ciclo(nombre_pv)
+        else:
+            estado_label.config(text="Estado: Inactivo")
+            barra['value'] = 0
 
-    entry_cantidad.bind("<KeyRelease>", validar_campos)
-    combo_pv.bind("<<ComboboxSelected>>", validar_campos)
+    def iniciar_ciclo(nombre_pv):
+        global segundos_restantes, delay_inicial
+        delay_inicial = random.randint(60, 1200)
+        segundos_restantes = delay_inicial
+        estado_label.config(text=f"Estado: Activo (esperando {segundos_restantes} seg)")
+        barra['maximum'] = delay_inicial
+        barra['value'] = 0
+        actualizar_contador(nombre_pv)
 
-    # --- Proceso de generación ---
-    def proceso(cantidad, nombre_pv):
-        barra_progreso["value"] = 0
-        barra_progreso["maximum"] = cantidad
+    def toggle():
+        global activo
+        nombre_pv = combo_pv.get()
+        if not nombre_pv:
+            messagebox.showerror("Error", "Seleccioná un punto de venta.")
+            return
 
-        for i in range(cantidad):
-            metodo = random.choice(["Efectivo", "Tarjeta", "Transferencia", "Mercado Pago"])
-            monto = random.randint(1000, 50000)
-            tipo = random.choice(["normal", "promo", "devolución"])
-            referencia = f"REF-{random.randint(100000, 999999)}"
-            fecha_actual = datetime.now()
+        if not activo:
+            activo = True
+            btn_toggle.config(text="Detener Generación", bg="#F44336")
+            iniciar_ciclo(nombre_pv)
+        else:
+            activo = False
+            btn_toggle.config(text="Iniciar Generación", bg="#4CAF50")
 
-            ticket = Ticket(
-                punto_venta=nombre_pv,
-                metodo_pago=metodo,
-                monto=monto,
-                fecha=fecha_actual,
-                tipo_ticket=tipo,
-                referencia=referencia
-            )
-
-            ticket.guardar()
-            barra_progreso["value"] += 1
-            root.update_idletasks()
-
-        messagebox.showinfo("Completado", f"Se generaron {cantidad} tickets para {nombre_pv}")
-        btn_iniciar.config(state="disabled")
-
-    # --- Iniciar hilo ---
-    def iniciar_proceso():
-        try:
-            cantidad = int(entry_cantidad.get())
-            nombre_pv = combo_pv.get()
-            if cantidad <= 0 or not nombre_pv:
-                raise ValueError
-            btn_iniciar.config(state="disabled")
-            threading.Thread(target=lambda: proceso(cantidad, nombre_pv)).start()
-        except ValueError:
-            messagebox.showerror("Error", "Ingresá una cantidad válida y seleccioná un punto de venta.")
-
-    btn_iniciar.config(command=iniciar_proceso)
-
-    # --- Ejecutar interfaz ---
+    btn_toggle.config(command=toggle)
     root.mainloop()

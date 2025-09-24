@@ -6,7 +6,7 @@ CONFIG_LOCAL = {
 }
 
 CONFIG_INSTITUTO = {
-    'server': '192.168.219.218', 
+    'server': '192.168.255.255', 
     'database': 'PuntoVenta',                      
     'user': 'homeUser',                      
     'password': 'Admin'                

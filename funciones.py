@@ -1,5 +1,7 @@
 import pyodbc
 from config import CONNECTION_STRING
+from tkinter import messagebox
+from datetime import datetime
 
 
 def get_db_connection():
@@ -86,7 +88,22 @@ def borrar_articulo(id):
         print(f"Error al borrar el artículo: {e}")
     finally:
         conn.close()
+
+def obtener_articulos():
+    conn, cursor = get_db_connection()
+    if not conn:
+        return []
+
+    try:
+        cursor.execute("SELECT id, descripcion, precio FROM articulos ORDER BY descripcion")
+        return cursor.fetchall()
+    except Exception as e:
+        print(f"Error al obtener artículos: {e}")
+        return []
+    finally:
+        conn.close()
                 
+
 class Ticket:
     def __init__(self, punto_venta, metodo_pago, monto, fecha, tipo_ticket, referencia):
         self.punto_venta = punto_venta
@@ -95,21 +112,48 @@ class Ticket:
         self.fecha = fecha
         self.tipo_ticket = tipo_ticket
         self.referencia = referencia
+        self.id = None  # Se asigna al guardar
 
     def guardar(self):
-        conn = pyodbc.connect(CONNECTION_STRING)
-        cursor = conn.cursor()
-        query = """
-        INSERT INTO tickets (punto_venta, metodo_pago, monto, fecha, tipo_ticket, referencia)
-        VALUES (?, ?, ?, ?, ?, ?)
+        conn, cursor = get_db_connection()
+        if not conn:
+            print("No se pudo establecer la conexión para guardar el ticket.")
+            return
+
+        try:
+            cursor.execute("""
+                INSERT INTO tickets (punto_venta, metodo_pago, monto, fecha, tipo_ticket, referencia)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (self.punto_venta, self.metodo_pago, self.monto, self.fecha, self.tipo_ticket, self.referencia))
+            conn.commit()
+
+            cursor.execute("SELECT @@IDENTITY AS id")
+            self.id = cursor.fetchone()[0]
+
+        except Exception as e:
+            print(f"Error al guardar el ticket: {e}")
+        finally:
+            conn.close()
+
+    def guardar_detalle(self, detalle):
         """
-        cursor.execute(query, (
-            self.punto_venta,
-            self.metodo_pago,
-            self.monto,
-            self.fecha,
-            self.tipo_ticket,
-            self.referencia
-        ))
-        conn.commit()
-        conn.close()
+        Guarda el detalle del ticket. Cada ítem incluye:
+        (id_articulo, precio_unitario, cantidad, nombre_articulo)
+        """
+        conn, cursor = get_db_connection()
+        if not conn:
+            print("No se pudo establecer la conexión para guardar el detalle.")
+            return
+
+        try:
+            for id_articulo, precio, cantidad, nombre_articulo in detalle:
+                cursor.execute("""
+                    INSERT INTO detalle_ticket (id_ticket, id_articulo, cantidad, precio_unitario, nombre_articulo)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (self.id, id_articulo, cantidad, precio, nombre_articulo))
+            conn.commit()
+
+        except Exception as e:
+            print(f"Error al guardar el detalle del ticket: {e}")
+        finally:
+            conn.close()
