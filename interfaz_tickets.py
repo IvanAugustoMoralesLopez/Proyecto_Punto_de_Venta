@@ -76,7 +76,7 @@ def creartickets():
 
     def iniciar_ciclo(nombre_pv):
         global segundos_restantes, delay_inicial
-        delay_inicial = random.randint(60, 1200)
+        delay_inicial = random.randint(60,1200 )
         segundos_restantes = delay_inicial
         estado_label.config(text=f"Estado: Activo (esperando {segundos_restantes} seg)")
         barra['maximum'] = delay_inicial

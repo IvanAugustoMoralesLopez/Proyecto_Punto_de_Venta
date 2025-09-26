@@ -1,9 +1,14 @@
-
 import tkinter as tk
 from tkinter import ttk  
 from tkinter import messagebox 
 import funciones
-from interfaz_tickets import creartickets
+from interfaz_tickets import creartickets 
+from graficos import (
+    generar_grafico_ventas_por_articulo,
+    generar_grafico_cantidad_por_articulo,
+    generar_grafico_ventas_por_dia
+)
+
 
 
 root = tk.Tk()
@@ -185,7 +190,13 @@ def mostrar_encabezados():
         label = tk.Label(info_articulos, text=texto_col, bg="#96C9D9", font=("Arial", 10, "bold"),
                          anchor="center", relief="solid", bd=1)
         label.grid(row=0, column=i, sticky="nsew")
-        info_articulos.grid_columnconfigure(i, weight=1)
+        info_articulos.grid_columnconfigure(i, weight=1) 
+
+
+def mostrar_graficos():
+    generar_grafico_ventas_por_articulo()
+    generar_grafico_cantidad_por_articulo()
+    generar_grafico_ventas_por_dia()
 
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
@@ -220,12 +231,15 @@ barra_cant.place(relx=0.87, rely=0.071, relwidth=0.1)
 
 
 btn_inventario = tk.Button(header_opciones, text="Inventario", padx=10, pady=1, font=("Inter", 8), command=abrir_ventana_inventario)
-btn_inventario.pack(side="left", padx=5, pady=5)
+btn_inventario.pack(side="left", padx=5, pady=5)  
 
-buttons = ["Ventas", "Crear Ticket"]
+buttons = ["Ventas"]
 for text in buttons:
     btn = tk.Button(header_opciones, text=text, padx=10, pady=1, font=("Inter", 8))
     btn.pack(side="left", padx=5, pady=5)
+
+btn_detalle_de_venta = tk.Button(header_opciones, text="Graficos de venta", padx=10, pady=1, font=("Inter", 8), command=mostrar_graficos)
+btn_detalle_de_venta.pack(side="left", padx=15, pady=5)
 
 btn_generar_ticket = tk.Button(header_opciones, text="Generar Ticket", padx=10, pady=1, font=("Inter", 8),command=creartickets )
 btn_generar_ticket.pack(side="left", padx=8, pady=5)
@@ -289,7 +303,9 @@ def ventana_agregar_producto():
         except Exception as e:
             messagebox.showerror("Error", f"❌ Datos inválidos: {e}")
     
-    tk.Button(ventana, text="Agregar", command=guardar_producto, bg="#B7E998").pack(pady=15) 
+    tk.Button(ventana, text="Agregar", command=guardar_producto, bg="#B7E998").pack(pady=15)  
+
+
     
 btn_presupuesto = tk.Button(body, text="Presupuesto", padx=10, pady=1, bg="#C3C5C2", font=("Inter", 8), bd=1, relief="solid")
 btn_presupuesto.place(relx=0.81, rely=0.286, relwidth=0.16, relheight=0.071)

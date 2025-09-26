@@ -1,7 +1,7 @@
-ENTORNO = 'instituto' 
+ENTORNO = 'local' 
 
 CONFIG_LOCAL = {
-    'server': 'localhost', 
+    'server': 'localhost\\SQLEXPRESS01', 
     'database': 'PuntoVenta'
 }
 
