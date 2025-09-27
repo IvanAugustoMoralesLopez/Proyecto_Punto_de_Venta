@@ -9,6 +9,8 @@ from graficos import (
     generar_grafico_ventas_por_dia
 )
 
+articulos_agregados = []
+checks_articulos = []
 
 
 root = tk.Tk()
@@ -161,36 +163,81 @@ def abrir_ventana_inventario():
 
 
 def buscar_en_bd():
-    limpiar_resultados()
     texto = barra_busca.get()
+
+    try:
+        cantidad = int(barra_cant.get())
+        if cantidad <= 0:
+            raise ValueError
+    except ValueError:
+        tk.messagebox.showerror("Cantidad inválida", "Ingresá una cantidad válida mayor a cero.")
+        return
+
     resultados = funciones.buscar_articulo(texto)
 
     if not resultados:
-        sin_resultado = tk.Label(info_articulos, text="No se encontraron resultados", bg="#F5F5F5", font=("Arial", 10))
-        sin_resultado.grid(row=1, column=0, columnspan=5, pady=10)
+        tk.messagebox.showinfo("Sin resultados", "No se encontraron productos que coincidan.")
         return
 
-    for fila_num, r in enumerate(resultados, start=1):
-        tk.Label(info_articulos, text=r[1], bg="#FFFFFF", relief="solid", borderwidth=1).grid(row=fila_num, column=0, sticky="nsew")
-        tk.Label(info_articulos, text=r[2], bg="#FFFFFF", relief="solid", borderwidth=1, anchor="w").grid(row=fila_num, column=1, sticky="nsew")
-        tk.Label(info_articulos, text=r[4], bg="#FFFFFF", relief="solid", borderwidth=1).grid(row=fila_num, column=2, sticky="nsew")
-        tk.Label(info_articulos, text=f"${r[3]:.2f}", bg="#FFFFFF", relief="solid", borderwidth=1).grid(row=fila_num, column=3, sticky="nsew")
-        importe = r[3] * r[4]
-        tk.Label(info_articulos, text=f"${importe:.2f}", bg="#FFFFFF", relief="solid", borderwidth=1).grid(row=fila_num, column=4, sticky="nsew")
+    r = resultados[0]  # Tomamos el primero que coincida
+    articulo = {
+        "codigo": r[1],         # Código
+        "descripcion": r[2],    # Descripción
+        "precio": r[3],         # Precio unitario
+        "cantidad": cantidad,
+        "importe": r[3] * cantidad
+    }
+    articulos_agregados.append(articulo)
 
-def limpiar_resultados(): 
-    for widget in info_articulos.winfo_children():
-        info_articulos.grid_columnconfigure(info_articulos.children[widget._name], weight=1)
-        if widget.grid_info()['row'] != 0:
-            widget.destroy()
+    mostrar_articulos_en_grilla()
+    actualizar_totales()
+    
+def mostrar_articulos_en_grilla():
+    limpiar_resultados()
+    checks_articulos.clear()  # Limpiamos la lista para evitar duplicados
+
+    for fila_num, art in enumerate(articulos_agregados, start=1):
+        tk.Label(info_articulos, text=art["codigo"], font=("Arial", 11),
+                 bg="#FFFFFF", relief="solid", borderwidth=1).grid(row=fila_num, column=0, sticky="nsew")
+        tk.Label(info_articulos, text=art["descripcion"], font=("Arial", 11),
+                 bg="#FFFFFF", relief="solid", borderwidth=1).grid(row=fila_num, column=1, sticky="nsew")
+        tk.Label(info_articulos, text=art["cantidad"], font=("Arial", 11),
+                 bg="#FFFFFF", relief="solid", borderwidth=1).grid(row=fila_num, column=2, sticky="nsew")
+        tk.Label(info_articulos, text=f"${art['precio']:.2f}", font=("Arial", 11),
+                 bg="#FFFFFF", relief="solid", borderwidth=1).grid(row=fila_num, column=3, sticky="nsew")
+        tk.Label(info_articulos, text=f"${art['importe']:.2f}", font=("Arial", 11),
+                 bg="#FFFFFF", relief="solid", borderwidth=1).grid(row=fila_num, column=4, sticky="nsew")
+
+        # Checkbox para seleccionar artículo
+        var_check = tk.BooleanVar()
+        check = tk.Checkbutton(info_articulos, variable=var_check, bg="#FFFFFF")
+        check.grid(row=fila_num, column=5, sticky="nsew")
+        checks_articulos.append(var_check)
+
+
+        
+def actualizar_totales():
+    subtotal = sum(art["importe"] for art in articulos_agregados)
+    descuento = 0  # Podés agregar lógica de descuento si querés
+    total = subtotal - descuento
+
+    # Actualizar los labels visuales
+    valor_subt.config(text=f"${subtotal:.2f}")
+    valor_desc.config(text=f"${descuento:.2f}")
+    valor_tot.config(text=f"${total:.2f}")
+    
 
 def mostrar_encabezados():
-    columnas = ["Código", "Descripción", "Cantidad", "Precio Unitario", "Importe"]
+    columnas = ["Código", "Descripción", "Cantidad", "Precio Unitario", "Importe", "Seleccionar"]
     for i, texto_col in enumerate(columnas):
-        label = tk.Label(info_articulos, text=texto_col, bg="#96C9D9", font=("Arial", 10, "bold"),
-                         anchor="center", relief="solid", bd=1)
+        label = tk.Label(info_articulos, text=texto_col, bg="#96C9D9",
+                         font=("Arial", 12, "bold"), anchor="center",
+                         relief="solid", bd=1, padx=50, pady=4)
         label.grid(row=0, column=i, sticky="nsew")
-        info_articulos.grid_columnconfigure(i, weight=1) 
+
+        # Asignamos peso proporcional a cada columna
+        info_articulos.grid_columnconfigure(i, weight=1)
+
 
 
 def mostrar_graficos():
@@ -205,14 +252,37 @@ root.geometry(f"{screen_width}x{screen_height}")
 header_opciones = tk.Frame(bg="#ADB2B4", height=50, bd=3, relief="ridge")
 parte_busqueda = tk.Frame(root, bg="#CFCFCF", height=40)
 body = tk.Frame(root, bg="#CFCFCF") 
-info_articulos = tk.Frame(root, bg="#F5F5F5", bd=1, relief="solid")
+
+# Contenedor que reemplaza a info_articulos
+contenedor_scroll = tk.Frame(root)
+contenedor_scroll.place(relx=0.02, rely=0.143, relwidth=0.78, relheight=0.828)
+
+canvas = tk.Canvas(contenedor_scroll, bg="#F5F5F5")
+scrollbar = tk.Scrollbar(contenedor_scroll, orient="vertical", command=canvas.yview)
+scrollable_frame = tk.Frame(canvas, bg="#F5F5F5")
+
+scrollable_frame.bind(
+    "<Configure>",
+    lambda e: canvas.configure(
+        scrollregion=canvas.bbox("all")
+    )
+)
+
+canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+canvas.configure(yscrollcommand=scrollbar.set)
+
+canvas.pack(side="left", fill="both", expand=True)
+scrollbar.pack(side="right", fill="y")
+
+# Este es tu nuevo info_articulos
+info_articulos = scrollable_frame
+
 bloque_totales = tk.Frame(body, bg="#C2DBE4", bd=1, relief="solid")
 
 header_opciones.pack(fill="x")
 parte_busqueda.pack(fill="x")
 body.pack(fill="both", expand=True)
 
-info_articulos.place(relx=0.02, rely=0.143, relwidth=0.78, relheight=0.828)
 bloque_totales.place(relx=0.81, rely=0.071, relwidth=0.16, relheight=0.143) 
 
 mostrar_encabezados()
@@ -313,10 +383,27 @@ btn_presupuesto.place(relx=0.81, rely=0.286, relwidth=0.16, relheight=0.071)
 btn_cobrar = tk.Button(body, text="Cobrar", padx=10, pady=1, bg="#8CCFFF", font=("Inter", 8), bd=1, relief="solid")
 btn_cobrar.place(relx=0.81, rely=0.4, relwidth=0.16, relheight=0.071)
 
-btn_nueva_venta = tk.Button(body, text="Nueva Venta", padx=10, pady=1, bg="#B7E998", font=("Inter", 8), bd=1, relief="solid")
+def limpiar_resultados(): 
+    for widget in info_articulos.winfo_children():
+        info_articulos.grid_columnconfigure(info_articulos.children[widget._name], weight=1)
+        if widget.grid_info()['row'] != 0:
+            widget.destroy()
+btn_nueva_venta = tk.Button(body, text="Nueva Venta",command=limpiar_resultados, padx=10, pady=1, bg="#B7E998", font=("Inter", 8), bd=1, relief="solid")
 btn_nueva_venta.place(relx=0.81, rely=0.514, relwidth=0.16, relheight=0.071)
 
-btn_eliminar_articulo = tk.Button(body, text="Eliminar articulo", padx=10, pady=1, bg="#F8A894", font=("Inter", 8), bd=1, relief="solid")
+def eliminar_articulos():
+    global articulos_agregados
+    nuevos_articulos = []
+
+    for i, art in enumerate(articulos_agregados):
+        if not checks_articulos[i].get():
+            nuevos_articulos.append(art)
+
+    articulos_agregados = nuevos_articulos
+    mostrar_articulos_en_grilla()
+    actualizar_totales()
+
+btn_eliminar_articulo = tk.Button(body, text="Eliminar articulo",command=eliminar_articulos, padx=10, pady=1, bg="#F8A894", font=("Inter", 8), bd=1, relief="solid")
 btn_eliminar_articulo.place(relx=0.81, rely=0.628, relwidth=0.16, relheight=0.071) 
 
 btn_agregar_producto = tk.Button( body, text="Agregar Producto", padx=10, pady=1, bg="#A8E6CF", font=("Inter", 8), bd=1, relief="solid", command=ventana_agregar_producto)

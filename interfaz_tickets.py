@@ -41,7 +41,7 @@ def creartickets():
         if not articulos_disponibles:
             return
 
-        seleccionados = random.sample(articulos_disponibles, k=random.randint(3, 7))
+        seleccionados = random.sample(articulos_disponibles, k=random.randint(1, 10))
         detalle = []
         monto_total = 0
 
@@ -76,7 +76,7 @@ def creartickets():
 
     def iniciar_ciclo(nombre_pv):
         global segundos_restantes, delay_inicial
-        delay_inicial = random.randint(60,1200 )
+        delay_inicial = random.randint(60,1200)  # Entre 1 minuto y 20 minutos
         segundos_restantes = delay_inicial
         estado_label.config(text=f"Estado: Activo (esperando {segundos_restantes} seg)")
         barra['maximum'] = delay_inicial

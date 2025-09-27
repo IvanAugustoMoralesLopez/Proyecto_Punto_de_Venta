@@ -102,7 +102,6 @@ def obtener_articulos():
         return []
     finally:
         conn.close()
-                
 
 class Ticket:
     def __init__(self, punto_venta, metodo_pago, monto, fecha, tipo_ticket, referencia):

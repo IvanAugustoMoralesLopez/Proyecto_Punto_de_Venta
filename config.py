@@ -1,15 +1,18 @@
-ENTORNO = 'local' 
+ENTORNO = 'instituto' 
 
 CONFIG_LOCAL = {
-    'server': 'localhost\\SQLEXPRESS01', 
+    'server': 'localhost' , 
+    #\SQLEXPRESS01 (para enzo) 
     'database': 'PuntoVenta'
 }
 
 CONFIG_INSTITUTO = {
-    'server': '192.168.61.218', 
+    'server': '192.168.1.11', #cambien su ip
     'database': 'PuntoVenta',                      
-    'user': 'homeUser',                      
-    'password': 'Admin'                
+    'user': 'homeUser',     
+    #lucas cambia tus credenciales si haces en tu casa                 
+    'password': 'Admin'
+    #'password': 'admin'(para Lucas)                
 }
 
 
