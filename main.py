@@ -163,6 +163,8 @@ def abrir_ventana_inventario():
 
 
 def buscar_en_bd():
+    global articulos_agregados
+
     texto = barra_busca.get()
 
     try:
@@ -193,7 +195,6 @@ def buscar_en_bd():
     actualizar_totales()
     
 def mostrar_articulos_en_grilla():
-    limpiar_resultados()
     checks_articulos.clear()  # Limpiamos la lista para evitar duplicados
 
     for fila_num, art in enumerate(articulos_agregados, start=1):
@@ -384,10 +385,15 @@ btn_cobrar = tk.Button(body, text="Cobrar", padx=10, pady=1, bg="#8CCFFF", font=
 btn_cobrar.place(relx=0.81, rely=0.4, relwidth=0.16, relheight=0.071)
 
 def limpiar_resultados(): 
+    global articulos_agregados
+    articulos_agregados.clear()  # Esto sí borra la lista real
+
     for widget in info_articulos.winfo_children():
         info_articulos.grid_columnconfigure(info_articulos.children[widget._name], weight=1)
         if widget.grid_info()['row'] != 0:
             widget.destroy()
+    
+        
 btn_nueva_venta = tk.Button(body, text="Nueva Venta",command=limpiar_resultados, padx=10, pady=1, bg="#B7E998", font=("Inter", 8), bd=1, relief="solid")
 btn_nueva_venta.place(relx=0.81, rely=0.514, relwidth=0.16, relheight=0.071)
 
