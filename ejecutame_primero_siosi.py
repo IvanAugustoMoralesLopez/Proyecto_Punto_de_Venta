@@ -52,6 +52,23 @@ def crear_tablas():
             FOREIGN KEY (id_articulo) REFERENCES articulos(id)
         )
         """)
+        
+        cursor.execute("""
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='caja' AND xtype='U')
+        CREATE TABLE caja (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            fecha_apertura DATETIME,
+            fecha_cierre DATETIME,
+            monto_inicial DECIMAL(10,2),
+            total_ventas_efectivo DECIMAL(10,2),
+            total_ventas_tarjeta DECIMAL(10,2),
+            total_ventas_otros DECIMAL(10,2),
+            monto_final_esperado DECIMAL(10,2),
+            monto_final_real DECIMAL(10,2),
+            diferencia DECIMAL(10,2),
+            estado VARCHAR(20) -- puede ser 'abierta' o 'cerrada'
+        )
+        """)
 
         conn.commit()
         print("✅ Tablas creadas o verificadas correctamente.")
