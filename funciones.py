@@ -1,6 +1,5 @@
 import pyodbc
 from config import CONNECTION_STRING
-from tkinter import messagebox
 from datetime import datetime
 
 
@@ -135,10 +134,6 @@ class Ticket:
             conn.close()
 
     def guardar_detalle(self, detalle):
-        """
-        Guarda el detalle del ticket. Cada ítem incluye:
-        (id_articulo, precio_unitario, cantidad, nombre_articulo)
-        """
         conn, cursor = get_db_connection()
         if not conn:
             print("No se pudo establecer la conexión para guardar el detalle.")
@@ -156,3 +151,93 @@ class Ticket:
             print(f"Error al guardar el detalle del ticket: {e}")
         finally:
             conn.close()
+
+def verificar_caja_abierta():
+    conn, cursor = get_db_connection()
+    if not conn:
+        return None
+    try:
+        cursor.execute("SELECT id, monto_inicial FROM caja WHERE estado = 'abierta'")
+        return cursor.fetchone()
+    except Exception as e:
+        print(f"Error al verificar el estado de la caja abierta: {e}")
+        return None
+    finally:
+        conn.close()
+
+def abrir_caja(monto_inicial):
+    conn, cursor = get_db_connection()
+    if not conn:
+        return None
+    try:
+        fecha_apertura = datetime.now()
+        sql_query = "INSERT INTO caja (fecha_apertura, monto_inicial, estado) VALUES (?, ?, ?)"
+        cursor.execute(sql_query, (fecha_apertura, monto_inicial, 'abierta'))
+        conn.commit()
+        
+        cursor.execute("SELECT @@IDENTITY AS id")
+        id_sesion = cursor.fetchone()[0]
+        return id_sesion
+    except Exception as e:
+        print(f"Error al abrir caja: {e}")
+        return None
+    finally:
+        conn.close()
+
+def obtener_ventas_sesion(id_sesion):
+    
+    conn, cursor = get_db_connection()
+    if not conn: return {}
+
+    try:
+        cursor.execute("SELECT fecha_apertura FROM caja WHERE id = ?", (id_sesion,))
+        resultado = cursor.fetchone()
+        if not resultado: return {}
+        fecha_apertura = resultado[0]
+
+        sql_query = "SELECT metodo_pago, SUM(monto) FROM tickets WHERE fecha >= ? GROUP BY metodo_pago"
+        cursor.execute(sql_query, (fecha_apertura,))
+        
+        ventas = {"Efectivo": 0.0, "Tarjeta": 0.0, "Otros": 0.0}
+        
+        for metodo, total in cursor.fetchall():
+            if metodo == 'Efectivo':
+                ventas['Efectivo'] += float(total)
+            elif metodo == 'Tarjeta':
+                ventas['Tarjeta'] += float(total)
+            else: # Agrupa Transferencia, Mercado Pago, etc.
+                ventas['Otros'] += float(total)
+        return ventas
+
+    except Exception as e:
+        print(f"Error al obtener ventas de la sesión: {e}")
+        return {}
+    finally:
+        conn.close()
+
+def cerrar_caja(id_sesion, monto_inicial, monto_final_real, ventas_sesion): 
+    
+    conn, cursor = get_db_connection()
+    if not conn: return
+
+    try:
+        ventas_efectivo = ventas_sesion.get("Efectivo", 0.0)
+        monto_final_esperado = float(monto_inicial) + ventas_efectivo
+        diferencia = float(monto_final_real) - monto_final_esperado
+        
+        sql_query = """
+            UPDATE caja SET fecha_cierre = ?, total_ventas_efectivo = ?, 
+            total_ventas_tarjeta = ?, total_ventas_otros = ?, monto_final_esperado = ?, 
+            monto_final_real = ?, diferencia = ?, estado = 'cerrada'
+            WHERE id = ? """
+        cursor.execute(sql_query, (
+            datetime.now(), ventas_efectivo, ventas_sesion.get("Tarjeta", 0.0),
+            ventas_sesion.get("Otros", 0.0), monto_final_esperado, monto_final_real, 
+            diferencia, id_sesion
+        ))
+        conn.commit()
+        print("Caja cerrada exitosamente.")
+    except Exception as e:
+        print(f"Error al cerrar la caja: {e}")
+    finally:
+        conn.close()

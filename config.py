@@ -1,4 +1,4 @@
-ENTORNO = 'instituto' 
+ENTORNO = 'local' 
 
 CONFIG_LOCAL = {
     'server': 'localhost' , 
