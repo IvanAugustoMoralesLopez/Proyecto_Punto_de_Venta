@@ -9,6 +9,8 @@ from graficos import (
     generar_grafico_ventas_por_dia
 )
 from datetime import datetime
+from generar_pdf_tkinter import abrir_ventana_pdf
+
 
 # --- Globales ---
 articulos_agregados = []
@@ -385,6 +387,9 @@ btn_detalle_de_venta.pack(side="left", padx=15, pady=5)
 
 btn_generar_ticket = tk.Button(header_opciones, text="Generar Ticket", padx=10, pady=1, font=("Inter", 8), command=creartickets)
 btn_generar_ticket.pack(side="left", padx=8, pady=5)
+
+btn_generarpdf = tk.Button(header_opciones, text= "Generar PDF", padx=10, pady=1, font=("Inter", 8), command=lambda: abrir_ventana_pdf(root))
+btn_generarpdf.pack(side="left", padx=8, pady=5)
 
 btn_cerrar = tk.Button(header_opciones, text="Cerrar Caja", padx=10, pady=1, bg="#ffdddd", font=("Inter", 8), command=gestionar_cierre_caja)
 btn_cerrar.pack(side="right", padx=10, pady=1)
