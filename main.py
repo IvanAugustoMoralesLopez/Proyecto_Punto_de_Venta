@@ -454,6 +454,20 @@ def ventana_agregar_producto():
 btn_presupuesto = tk.Button(body, text="Presupuesto", padx=10, pady=1, bg="#C3C5C2", font=("Inter", 8), bd=1, relief="solid")
 btn_presupuesto.place(relx=0.81, rely=0.286, relwidth=0.16, relheight=0.071)
 
+def calcular_presupuesto_seleccionados():
+    # Asegura que los checks estén sincronizados
+    if len(checks_articulos) != len(articulos_agregados):
+        messagebox.showerror("Error", "La selección de artículos no está sincronizada. Intenta agregar o eliminar artículos nuevamente.")
+        return
+    seleccionados = [art for var, art in zip(checks_articulos, articulos_agregados) if var.get()]
+    if not seleccionados:
+        messagebox.showinfo("Presupuesto", "No hay productos seleccionados.")
+        return
+    total_presupuesto = sum(float(art.get("importe", 0)) for art in seleccionados)
+    messagebox.showinfo("Presupuesto", f"El total de los productos seleccionados es: ${total_presupuesto:.2f}")
+
+btn_presupuesto.config(command=calcular_presupuesto_seleccionados)
+
 btn_cobrar = tk.Button(body, text="Cobrar", padx=10, pady=1, bg="#8CCFFF", font=("Inter", 8), bd=1, relief="solid")
 btn_cobrar.place(relx=0.81, rely=0.4, relwidth=0.16, relheight=0.071)
 
