@@ -34,8 +34,10 @@ def crear_tablas():
             punto_venta VARCHAR(50) DEFAULT 'Desconocido',
             metodo_pago VARCHAR(30) DEFAULT 'Efectivo',
             tipo_ticket VARCHAR(30) DEFAULT 'General',
-            monto INT DEFAULT 0,
+            monto DECIMAL(10,2) DEFAULT 0.00,
             referencia VARCHAR(50) DEFAULT 'Sin referencia'
+            id_caja INT, 
+            FOREIGN KEY (id_caja) REFERENCES caja(id) 
         )
         """)
 
