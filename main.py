@@ -10,7 +10,8 @@ from graficos import (
 )
 from datetime import datetime
 from generar_pdf_tkinter import abrir_ventana_pdf
-
+from interfaz import ventana_cobro
+from decimal import Decimal
 
 # --- Globales ---
 articulos_agregados = []
@@ -18,7 +19,7 @@ checks_articulos = []
 
 # Globales para la sesión de caja
 id_sesion_actual = None
-monto_inicial_caja = 0.0
+monto_inicial_caja = Decimal("0.00")
 
 # --- Ventanas de Apertura y Cierre ---
 
@@ -74,7 +75,7 @@ def gestionar_cierre_caja():
         return
 
     ventas = funciones.obtener_ventas_sesion(id_sesion_actual)
-    monto_esperado = monto_inicial_caja + ventas.get('Efectivo', 0.0)
+    monto_esperado = monto_inicial_caja + Decimal(str(ventas.get("Efectivo", 0.0)))
 
     cierre_win = tk.Toplevel(root)
     cierre_win.title("Cierre de Caja")
@@ -468,7 +469,7 @@ def calcular_presupuesto_seleccionados():
 
 btn_presupuesto.config(command=calcular_presupuesto_seleccionados)
 
-btn_cobrar = tk.Button(body, text="Cobrar", padx=10, pady=1, bg="#8CCFFF", font=("Inter", 8), bd=1, relief="solid")
+btn_cobrar = tk.Button(body, text="Cobrar", padx=10, pady=1, bg="#8CCFFF", font=("Inter", 8), bd=1, relief="solid", command=lambda: ventana_cobro(root, articulos_agregados))
 btn_cobrar.place(relx=0.81, rely=0.4, relwidth=0.16, relheight=0.071)
 
 def limpiar_resultados(): 

@@ -7,7 +7,7 @@ CONFIG_LOCAL = {
 }
 
 CONFIG_INSTITUTO = {
-    'server': '192.168.1.11', #cambien su ip
+    'server': '192.168.252.218', #cambien su ip
     'database': 'PuntoVenta',                      
     'user': 'homeUser',     
     #lucas cambia tus credenciales si haces en tu casa                 
