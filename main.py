@@ -51,12 +51,14 @@ def ventana_apertura_caja(root):
     def confirmar_apertura():
         global id_sesion_actual, monto_inicial_caja
         try:
-            monto = float(entry_monto.get())
-            if monto < 0: raise ValueError("El monto no puede ser negativo")
+            monto_float = float(entry_monto.get())
+            if monto_float < 0: raise ValueError("El monto no puede ser negativo")
             
-            id_sesion = funciones.abrir_caja(monto)
+            monto_decimal = Decimal(str(monto_float))
+
+            id_sesion = funciones.abrir_caja(monto_float)
             if id_sesion:
-                id_sesion_actual, monto_inicial_caja = id_sesion, monto
+                id_sesion_actual, monto_inicial_caja = id_sesion, monto_decimal
                 apertura_win.destroy()
                 root.deiconify() # Muestra la ventana principal
             else:
@@ -75,8 +77,9 @@ def gestionar_cierre_caja():
         return
 
     ventas = funciones.obtener_ventas_sesion(id_sesion_actual)
-    monto_esperado = monto_inicial_caja + Decimal(str(ventas.get("Efectivo", 0.0)))
+    monto_esperado = monto_inicial_caja + Decimal(str(ventas.get("Efectivo", 0.0))) + Decimal(str(ventas.get("Tarjeta", 0.0))) + Decimal(str(ventas.get("Otros", 0.0)))
 
+    
     cierre_win = tk.Toplevel(root)
     cierre_win.title("Cierre de Caja")
     cierre_win.geometry("400x450")
@@ -108,9 +111,9 @@ def gestionar_cierre_caja():
     label_diferencia = tk.Label(frame, text="Diferencia: $0.00", font=("Arial", 12, "bold"), fg="blue")
     label_diferencia.grid(row=8, columnspan=2, pady=10)
 
-    def calcular_diferencia(*args):
+    def calcular_diferencia(event=None):
         try:
-            monto_real_val = float(entry_monto_real.get())
+            monto_real_val = Decimal(entry_monto_real.get())
             diferencia = monto_real_val - monto_esperado
             color = "red" if diferencia < 0 else "green" if diferencia > 0 else "blue"
             label_diferencia.config(text=f"Diferencia: ${diferencia:.2f}", fg=color)
@@ -121,7 +124,7 @@ def gestionar_cierre_caja():
 
     def confirmar_cierre():
         try:
-            monto_real = float(entry_monto_real.get())
+            monto_real = Decimal(entry_monto_real.get())
             if messagebox.askyesno("Confirmar Cierre", "¿Está seguro de cerrar la caja?", parent=cierre_win):
                 funciones.cerrar_caja(id_sesion_actual, monto_inicial_caja, monto_real, ventas)
                 messagebox.showinfo("Caja Cerrada", "La aplicación se cerrará.", parent=cierre_win)
