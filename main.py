@@ -10,7 +10,7 @@ from graficos import (
 )
 from datetime import datetime
 from generar_pdf_tkinter import abrir_ventana_pdf
-from interfaz import ventana_cobro
+from interfaz import ventana_cobro, mostrar_ultimos_tickets
 from decimal import Decimal
 
 # --- Globales ---
@@ -383,8 +383,13 @@ btn_inventario.pack(side="left", padx=5, pady=5)
 
 buttons = ["Ventas"]
 for text in buttons:
-    btn = tk.Button(header_opciones, text=text, padx=10, pady=1, font=("Inter", 8))
+    if text == "Ventas":
+        btn = tk.Button(header_opciones, text=text, padx=10, pady=1, font=("Inter", 8),
+                        command=lambda: mostrar_ultimos_tickets(root))
+    else:
+        btn = tk.Button(header_opciones, text=text, padx=10, pady=1, font=("Inter", 8))
     btn.pack(side="left", padx=5, pady=5)
+
 
 btn_detalle_de_venta = tk.Button(header_opciones, text="Graficos de venta", padx=10, pady=1, font=("Inter", 8), command=mostrar_graficos)
 btn_detalle_de_venta.pack(side="left", padx=15, pady=5)

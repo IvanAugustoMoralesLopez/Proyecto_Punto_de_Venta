@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
 from db import get_db_connection
+from tkinter import ttk
+
 
 def cobrar_ticket(articulos_agregados, metodo_pago, punto_de_venta, tipo_ticket, referencia):
     conexion, _ = get_db_connection()
@@ -107,3 +109,69 @@ def ventana_cobro(root, articulos_agregados):
 
     tk.Button(ventana, text="Confirmar cobro", command=confirmar_cobro, bg="#B7E998").pack(pady=15)
     tk.Button(ventana, text="Cancelar", command=ventana.destroy, bg="#FF9999").pack()
+    
+def mostrar_ultimos_tickets(root):
+    ventana = tk.Toplevel(root)
+    ventana.title("Últimos 10 Tickets")
+    ventana.geometry("1000x800")
+    ventana.resizable(False, False)
+
+    frame = tk.Frame(ventana)
+    frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+    tree = ttk.Treeview(
+        frame,
+        columns=("ID", "Fecha", "Pago", "Artículos", "Cantidad Total", "Importe Total"),
+        show="headings",
+        height=15
+    )
+    tree.pack(side="left", fill="both", expand=True)
+
+    # Encabezados con ancho personalizado
+    encabezados = {
+        "ID": 60,
+        "Fecha": 150,
+        "Pago": 120,
+        "Artículos": 400,
+        "Cantidad Total": 100,
+        "Importe Total": 120
+    }
+
+    for col, ancho in encabezados.items():
+        tree.heading(col, text=col)
+        tree.column(col, width=ancho, anchor="center")
+
+    # Scroll vertical
+    scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=scrollbar.set)
+    scrollbar.pack(side="right", fill="y")
+
+    # Cargar datos desde SQL Server
+    conexion, _ = get_db_connection()
+    cursor = conexion.cursor()
+
+    cursor.execute("""
+        SELECT TOP 10
+            t.id AS ticket_id,
+            t.fecha,
+            t.metodo_pago,
+            STRING_AGG(dt.nombre_articulo, ', ') AS articulos,
+            SUM(dt.cantidad) AS cantidad_total,
+            SUM(dt.cantidad * dt.precio_unitario) AS importe_total
+        FROM tickets t
+        JOIN detalle_ticket dt ON t.id = dt.id_ticket
+        GROUP BY t.id, t.fecha, t.metodo_pago
+        ORDER BY t.id DESC
+    """)
+
+    resultados = cursor.fetchall()
+    if resultados:
+        for fila in resultados:
+            tree.insert("", "end", values=(
+                fila[0], fila[1], fila[2], fila[3], fila[4],
+                f"${fila[5]:.2f}"
+            ))
+    else:
+        tree.insert("", "end", values=("—", "—", "—", "No hay tickets", "—", "—"))
+
+    conexion.close()
