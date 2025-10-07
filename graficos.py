@@ -5,7 +5,7 @@ from db import get_db_connection
 def generar_grafico_ventas_por_articulo():
     conn, cursor = get_db_connection()
     query = """
-    SELECT nombre_articulo, SUM(cantidad * precio_unitario) AS total_ventas
+    SELECT TOP 10 nombre_articulo, SUM(cantidad * precio_unitario) AS total_ventas
     FROM detalle_ticket
     GROUP BY nombre_articulo
     ORDER BY total_ventas DESC
@@ -29,7 +29,7 @@ def generar_grafico_ventas_por_articulo():
 def generar_grafico_cantidad_por_articulo():
     conn, cursor = get_db_connection()
     query = """
-    SELECT nombre_articulo, SUM(cantidad) AS total_cantidad
+    SELECT TOP 10 nombre_articulo, SUM(cantidad) AS total_cantidad
     FROM detalle_ticket
     GROUP BY nombre_articulo
     ORDER BY total_cantidad DESC
