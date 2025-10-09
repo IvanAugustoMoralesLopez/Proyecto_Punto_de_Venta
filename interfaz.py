@@ -1,177 +1,158 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 from datetime import datetime
 from db import get_db_connection
-from tkinter import ttk
+from decimal import Decimal
 
-
-def cobrar_ticket(articulos_agregados, metodo_pago, punto_de_venta, tipo_ticket, referencia):
-    conexion, _ = get_db_connection()
-    if not conexion:
+def cobrar_ticket(articulos_agregados, metodo_pago, punto_de_venta, tipo_ticket, referencia, id_caja_actual):
+    if not articulos_agregados:
+        messagebox.showerror("Error", "❌ No hay artículos en la venta.")
+        return False
+        
+    conn, cursor = get_db_connection()
+    if not conn:
         messagebox.showerror("Error", "❌ No se pudo conectar con la base de datos.")
-        return
-
-    cursor = conexion.cursor()
+        return False
 
     try:
-        monto_total = sum(art["importe"] for art in articulos_agregados)
+        monto_total = sum(art["precio"] * art["cantidad"] for art in articulos_agregados)
         fecha_actual = datetime.now()
 
-        # Insertar en tickets
         cursor.execute("""
-            INSERT INTO tickets (punto_venta, metodo_pago, monto, fecha, tipo_ticket, referencia)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (punto_de_venta, metodo_pago, monto_total, fecha_actual, tipo_ticket, referencia))
+            INSERT INTO tickets (punto_venta, metodo_pago, monto, fecha, tipo_ticket, referencia, id_caja)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (punto_de_venta, metodo_pago, monto_total, fecha_actual, tipo_ticket, referencia, id_caja_actual))
 
         cursor.execute("SELECT @@IDENTITY AS id_ticket")
         id_ticket = cursor.fetchone()[0]
 
         for art in articulos_agregados:
-            # Buscar ID del artículo por código
-            cursor.execute("SELECT id, stock FROM articulos WHERE codigo = ?", (art["codigo"],))
+            cursor.execute("SELECT stock FROM articulos WHERE id = ?", (art["id"],))
             resultado = cursor.fetchone()
-
             if not resultado:
-                raise Exception(f"❌ El artículo con código '{art['codigo']}' no existe.")
+                raise Exception(f"❌ El artículo '{art['descripcion']}' no fue encontrado.")
 
-            id_articulo, stock_actual = resultado
-
+            stock_actual = resultado[0]
             if art["cantidad"] > stock_actual:
-                raise Exception(f"❌ Stock insuficiente para '{art['descripcion']}'. Disponible: {stock_actual}, solicitado: {art['cantidad']}")
+                raise Exception(f"❌ Stock insuficiente para '{art['descripcion']}'.")
 
-            # Insertar detalle del ticket
             cursor.execute("""
                 INSERT INTO detalle_ticket (id_ticket, id_articulo, cantidad, precio_unitario, nombre_articulo)
                 VALUES (?, ?, ?, ?, ?)
-            """, (
-                id_ticket,
-                id_articulo,
-                art["cantidad"],
-                art["precio"],
-                art["descripcion"]
-            ))
+            """, (id_ticket, art["id"], art["cantidad"], art["precio"], art["descripcion"]))
 
-            # Actualizar stock
             nuevo_stock = stock_actual - art["cantidad"]
-            cursor.execute("UPDATE articulos SET stock = ? WHERE id = ?", (nuevo_stock, id_articulo))
+            cursor.execute("UPDATE articulos SET stock = ? WHERE id = ?", (nuevo_stock, art["id"]))
 
-        conexion.commit()
-        messagebox.showinfo("Éxito", f"✅ Ticket #{id_ticket} registrado correctamente.")
-        articulos_agregados.clear()
+        conn.commit()
+        messagebox.showinfo("Éxito", f"✅ Venta registrada correctamente.\nTicket #{id_ticket}")
+        return True
 
     except Exception as e:
-        conexion.rollback()
-        messagebox.showerror("Error", f"{e}")
+        conn.rollback()
+        messagebox.showerror("Error al registrar la venta", f"{e}")
+        return False
+    finally:
+        if conn:
+            conn.close()
 
-def ventana_cobro(root, articulos_agregados):
+def ventana_cobro(root, articulos_agregados, callback_limpiar_grilla, callback_actualizar_totales, id_sesion_actual):
+    if not articulos_agregados:
+        messagebox.showerror("Error", "No hay artículos en la venta para cobrar.", parent=root)
+        return
+        
+    if not id_sesion_actual:
+        messagebox.showerror("Error", "No hay una sesión de caja activa. No se puede cobrar.", parent=root)
+        return
+
     ventana = tk.Toplevel(root)
-    ventana.title("Cobrar venta")
-    ventana.geometry("300x350")
+    ventana.title("Cobrar Venta")
+    ventana.geometry("300x300")
     ventana.resizable(False, False)
+    ventana.transient(root)
+    ventana.grab_set()
 
-    tk.Label(ventana, text="Punto de venta:").pack(pady=5)
-    entry_punto = tk.Entry(ventana)
-    entry_punto.pack()
+    frame = ttk.Frame(ventana, padding="15")
+    frame.pack(expand=True, fill="both")
 
-    tk.Label(ventana, text="Método de pago:").pack(pady=5)
-    metodo_pago = tk.StringVar()
-    opciones_pago = ["Efectivo", "Tarjeta", "Transferencia", "Cuenta Corriente"]
-    metodo_pago.set(opciones_pago[0])
-    tk.OptionMenu(ventana, metodo_pago, *opciones_pago).pack()
+    ttk.Label(frame, text="Punto de venta:").pack(pady=(0,2))
+    entry_punto = ttk.Entry(frame)
+    entry_punto.pack(fill="x")
+    entry_punto.insert(0, "Local Principal")
 
-    tk.Label(ventana, text="Tipo de ticket:").pack(pady=5)
-    tipo_ticket = tk.StringVar()
-    opciones_tipo = ["Venta común", "Promoción", "Devolución"]
-    tipo_ticket.set(opciones_tipo[0])
-    tk.OptionMenu(ventana, tipo_ticket, *opciones_tipo).pack()
+    ttk.Label(frame, text="Método de pago:").pack(pady=(10,2))
+    combo_pago = ttk.Combobox(frame, values=["Efectivo", "Tarjeta", "Transferencia", "Cuenta Corriente"], state="readonly")
+    combo_pago.pack(fill="x")
+    combo_pago.current(0)
 
-    tk.Label(ventana, text="Cliente (opcional):").pack(pady=5)
-    entry_cliente = tk.Entry(ventana)
-    entry_cliente.pack()
+    ttk.Label(frame, text="Referencia (Cliente, etc.):").pack(pady=(10,2))
+    entry_referencia = ttk.Entry(frame)
+    entry_referencia.pack(fill="x")
 
     def confirmar_cobro():
         punto = entry_punto.get().strip()
-        metodo = metodo_pago.get()
-        tipo = tipo_ticket.get()
-        cliente = entry_cliente.get().strip()
-        referencia = cliente if cliente else "Sin referencia"
+        metodo = combo_pago.get()
+        referencia = entry_referencia.get().strip() or "Sin referencia"
+        tipo_ticket = "Venta"
 
         if not punto:
-            messagebox.showerror("Error", "❌ Ingresá el punto de venta", parent=ventana)
+            messagebox.showerror("Dato requerido", "El punto de venta no puede estar vacío.", parent=ventana)
             return
 
-        if not articulos_agregados:
-            messagebox.showerror("Error", "❌ No hay artículos en la venta", parent=ventana)
-            return
+        exito = cobrar_ticket(articulos_agregados, metodo, punto, tipo_ticket, referencia, id_sesion_actual)
+        
+        if exito:
+            callback_limpiar_grilla()
+            callback_actualizar_totales()
+            ventana.destroy()
 
-        cobrar_ticket(articulos_agregados, metodo, punto, tipo, referencia)
-        ventana.destroy()
+    btn_confirmar = ttk.Button(frame, text="Confirmar Cobro", command=confirmar_cobro)
+    btn_confirmar.pack(pady=(20, 0), ipady=5, fill="x")
 
-    tk.Button(ventana, text="Confirmar cobro", command=confirmar_cobro, bg="#B7E998").pack(pady=15)
-    tk.Button(ventana, text="Cancelar", command=ventana.destroy, bg="#FF9999").pack()
-    
 def mostrar_ultimos_tickets(root):
     ventana = tk.Toplevel(root)
-    ventana.title("Últimos 10 Tickets")
-    ventana.geometry("1000x800")
-    ventana.resizable(False, False)
+    ventana.title("Últimos Tickets Registrados")
+    ventana.geometry("950x400")
+    ventana.transient(root)
+    ventana.grab_set()
 
-    frame = tk.Frame(ventana)
-    frame.pack(fill="both", expand=True, padx=10, pady=10)
+    frame = ttk.Frame(ventana, padding="10")
+    frame.pack(fill="both", expand=True)
 
-    tree = ttk.Treeview(
-        frame,
-        columns=("ID", "Fecha", "Pago", "Artículos", "Cantidad Total", "Importe Total"),
-        show="headings",
-        height=15
-    )
-    tree.pack(side="left", fill="both", expand=True)
-
-    # Encabezados con ancho personalizado
-    encabezados = {
-        "ID": 60,
-        "Fecha": 150,
-        "Pago": 120,
-        "Artículos": 400,
-        "Cantidad Total": 100,
-        "Importe Total": 120
-    }
-
-    for col, ancho in encabezados.items():
-        tree.heading(col, text=col)
-        tree.column(col, width=ancho, anchor="center")
-
-    # Scroll vertical
+    columnas = ("ID", "Fecha", "Pago", "Artículos", "Total")
+    tree = ttk.Treeview(frame, columns=columnas, show="headings")
+    tree.pack(fill="both", expand=True, side="left")
+    
     scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
-    tree.configure(yscrollcommand=scrollbar.set)
     scrollbar.pack(side="right", fill="y")
+    tree.configure(yscrollcommand=scrollbar.set)
 
-    # Cargar datos desde SQL Server
-    conexion, _ = get_db_connection()
-    cursor = conexion.cursor()
+    tree.heading("ID", text="ID")
+    tree.heading("Fecha", text="Fecha")
+    tree.heading("Pago", text="Método de Pago")
+    tree.heading("Artículos", text="Artículos")
+    tree.heading("Total", text="Importe Total")
+    tree.column("ID", width=60, anchor="center")
+    tree.column("Fecha", width=150)
+    tree.column("Pago", width=120)
+    tree.column("Artículos", width=400)
+    tree.column("Total", width=120, anchor="e")
 
-    cursor.execute("""
-        SELECT TOP 10
-            t.id AS ticket_id,
-            t.fecha,
-            t.metodo_pago,
-            STRING_AGG(dt.nombre_articulo, ', ') AS articulos,
-            SUM(dt.cantidad) AS cantidad_total,
-            SUM(dt.cantidad * dt.precio_unitario) AS importe_total
-        FROM tickets t
-        JOIN detalle_ticket dt ON t.id = dt.id_ticket
-        GROUP BY t.id, t.fecha, t.metodo_pago
-        ORDER BY t.id DESC
-    """)
+    try:
+        conn, cursor = get_db_connection()
+        if not conn: return
 
-    resultados = cursor.fetchall()
-    if resultados:
+        cursor.execute("""
+            SELECT TOP 20 t.id, t.fecha, t.metodo_pago, t.monto,
+            (SELECT STRING_AGG(d.nombre_articulo, ', ') FROM detalle_ticket d WHERE d.id_ticket = t.id) AS detalles
+            FROM tickets t
+            ORDER BY t.id DESC
+        """)
+        resultados = cursor.fetchall()
         for fila in resultados:
-            tree.insert("", "end", values=(
-                fila[0], fila[1], fila[2], fila[3], fila[4],
-                f"${fila[5]:.2f}"
-            ))
-    else:
-        tree.insert("", "end", values=("—", "—", "—", "No hay tickets", "—", "—"))
+            tree.insert("", "end", values=(fila.id, fila.fecha.strftime('%Y-%m-%d %H:%M'), fila.metodo_pago, fila.detalles, f"${fila.monto:.2f}"))
 
-    conexion.close()
+    except Exception as e:
+        messagebox.showerror("Error", f"No se pudieron cargar los tickets: {e}")
+    finally:
+        if conn: conn.close()
