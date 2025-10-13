@@ -528,6 +528,6 @@ btn_agregar_producto = tk.Button(body, text="Agregar Producto", padx=10, pady=1,
 btn_agregar_producto.place(relx=0.81, rely=0.7, relwidth=0.16, relheight=0.071)
 
 if __name__ == "__main__":
-    root.withdraw()
+    
     ventana_apertura_caja(root)
     root.mainloop()
