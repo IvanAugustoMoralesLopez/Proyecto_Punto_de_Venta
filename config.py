@@ -1,3 +1,5 @@
+import os
+
 ENTORNO = 'local' 
 
 CONFIG_LOCAL = {
@@ -7,11 +9,11 @@ CONFIG_LOCAL = {
 }
 
 CONFIG_INSTITUTO = {
-    'server': '192.168.252.218', #cambien su ip
-    'database': 'PuntoVenta',                      
-    'user': 'homeUser',     
+    'server': os.getenv('DB_SERVER', '192.168.252.218'), # Usa variable de entorno o un valor por defecto
+    'database': os.getenv('DB_DATABASE', 'PuntoVenta'),                      
+    'user': os.getenv('DB_USER', 'homeUser'),     
     #lucas cambia tus credenciales si haces en tu casa                 
-    'password': 'Admin'
+    'password': os.getenv('DB_PASS', 'Admin')
     #'password': 'admin'(para Lucas)                
 }
 
@@ -42,4 +44,3 @@ elif ENTORNO == 'instituto':
         f"UID={UID};"
         f"PWD={PWD};"
     )
-

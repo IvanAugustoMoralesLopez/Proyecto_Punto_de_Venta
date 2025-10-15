@@ -1,15 +1,7 @@
 import pyodbc
-from config import CONNECTION_STRING
+from db import get_db_connection
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
-
-def get_db_connection():
-    try:
-        conn = pyodbc.connect(CONNECTION_STRING)
-        return conn, conn.cursor()
-    except Exception as e:
-        print(f"Error al conectar con la base de datos: {e}")
-        return None, None
 
 def agregar_articulo(codigo, descripcion, precio, stock):
     conn, cursor = get_db_connection()
@@ -115,7 +107,7 @@ class Ticket:
             for item in detalle:
                 id_articulo, precio, cantidad, nombre = item
                 sql = "INSERT INTO detalle_ticket (id_ticket, id_articulo, cantidad, precio_unitario, nombre_articulo) VALUES (?, ?, ?, ?, ?)"
-                cursor.execute(sql, (self.id, id_articulo, cantidad, float(precio), nombre))
+                cursor.execute(sql, (self.id, id_articulo, cantidad, precio, nombre))
             conn.commit()
         except Exception as e:
             print(f"Error al guardar el detalle del ticket: {e}")
@@ -207,5 +199,58 @@ def cerrar_caja(id_sesion, monto_inicial, monto_final_real, ventas_sesion):
         print("Caja cerrada exitosamente.")
     except Exception as e:
         print(f"Error al cerrar la caja: {e}")
+    finally:
+        if conn: conn.close()
+
+#NUEVAS FUNCIONES PARA PROVEEDORES
+
+def agregar_proveedor(nombre, cuit, telefono, email, direccion, notas):
+    conn, cursor = get_db_connection()
+    if not conn: return
+    try:
+        sql = "INSERT INTO proveedores (nombre, cuit, telefono, email, direccion, notas) VALUES (?, ?, ?, ?, ?, ?)"
+        cursor.execute(sql, (nombre, cuit, telefono, email, direccion, notas))
+        conn.commit()
+    except Exception as e:
+        print(f"Error al agregar el proveedor: {e}")
+    finally:
+        if conn: conn.close()
+
+def listar_proveedores():
+    conn, cursor = get_db_connection()
+    if not conn: return []
+    try:
+        cursor.execute("SELECT id, nombre, cuit, telefono, email, direccion, notas FROM proveedores ORDER BY nombre")
+        return cursor.fetchall()
+    except Exception as e:
+        print(f"Error al listar proveedores: {e}")
+        return []
+    finally:
+        if conn: conn.close()
+
+def editar_proveedor(id, nombre, cuit, telefono, email, direccion, notas):
+    conn, cursor = get_db_connection()
+    if not conn: return
+    try:
+        sql = """
+            UPDATE proveedores 
+            SET nombre = ?, cuit = ?, telefono = ?, email = ?, direccion = ?, notas = ?
+            WHERE id = ?
+        """
+        cursor.execute(sql, (nombre, cuit, telefono, email, direccion, notas, id))
+        conn.commit()
+    except Exception as e:
+        print(f"Error al editar el proveedor: {e}")
+    finally:
+        if conn: conn.close()
+
+def borrar_proveedor(id):
+    conn, cursor = get_db_connection()
+    if not conn: return
+    try:
+        cursor.execute("DELETE FROM proveedores WHERE id = ?", (id,))
+        conn.commit()
+    except Exception as e:
+        print(f"Error al borrar el proveedor: {e}")
     finally:
         if conn: conn.close()

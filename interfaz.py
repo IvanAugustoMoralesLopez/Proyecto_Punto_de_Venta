@@ -27,28 +27,34 @@ def cobrar_ticket(articulos_agregados, metodo_pago, punto_de_venta, tipo_ticket,
         id_ticket = cursor.fetchone()[0]
 
         for art in articulos_agregados:
-            cursor.execute("SELECT stock FROM articulos WHERE id = ?", (art["id"],))
-            resultado = cursor.fetchone()
-            if not resultado:
-                raise Exception(f"❌ El artículo '{art['descripcion']}' no fue encontrado.")
+            # Se combina la comprobación y la actualización en una sola operación.
+            sql_update_stock = """
+                UPDATE articulos 
+                SET stock = stock - ? 
+                WHERE id = ? AND stock >= ?
+            """
+            
+            cursor.execute(sql_update_stock, (art["cantidad"], art["id"], art["cantidad"]))
+            
+            # cursor.rowcount nos dice cuantas filas fueron editadas.
+            # Si es 0, significa que la condición WHERE (stock >= cantidad) no se cumplió.
+            if cursor.rowcount == 0:
+                # Si falla la actualización de stock de un artículo, debemos deshacer toda la transacción.
+                raise Exception(f"❌ Stock insuficiente para '{art['descripcion']}'. Venta cancelada.")
 
-            stock_actual = resultado[0]
-            if art["cantidad"] > stock_actual:
-                raise Exception(f"❌ Stock insuficiente para '{art['descripcion']}'.")
-
+            # Si el update fue exitoso (rowcount > 0).
             cursor.execute("""
                 INSERT INTO detalle_ticket (id_ticket, id_articulo, cantidad, precio_unitario, nombre_articulo)
                 VALUES (?, ?, ?, ?, ?)
             """, (id_ticket, art["id"], art["cantidad"], art["precio"], art["descripcion"]))
 
-            nuevo_stock = stock_actual - art["cantidad"]
-            cursor.execute("UPDATE articulos SET stock = ? WHERE id = ?", (nuevo_stock, art["id"]))
-
+        # Si todos los artículos se procesaron correctamente, confirmamos la transacción.
         conn.commit()
         messagebox.showinfo("Éxito", f"✅ Venta registrada correctamente.\nTicket #{id_ticket}")
         return True
 
     except Exception as e:
+        # Si ocurre cualquier error (incluido el de stock), hacemos rollback.
         conn.rollback()
         messagebox.showerror("Error al registrar la venta", f"{e}")
         return False
