@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import pandas as pd
 from db import get_db_connection
 
 def generar_grafico_ventas_por_articulo():
@@ -50,11 +49,11 @@ def generar_grafico_cantidad_por_articulo():
 def generar_grafico_ventas_por_dia():
     conn, cursor = get_db_connection()
     query = """
-    SELECT t.fecha, SUM(dt.cantidad * dt.precio_unitario) AS total_dia
+    SELECT CAST(t.fecha AS DATE) AS fecha_dia, SUM(dt.cantidad * dt.precio_unitario) AS total_dia
     FROM detalle_ticket dt
     JOIN tickets t ON dt.id_ticket = t.id
-    GROUP BY t.fecha
-    ORDER BY t.fecha
+    GROUP BY CAST(t.fecha AS DATE)
+    ORDER BY fecha_dia
     """
     cursor.execute(query)
     datos = cursor.fetchall()
@@ -71,5 +70,3 @@ def generar_grafico_ventas_por_dia():
     plt.xticks(rotation=45)
     plt.tight_layout()
     plt.show()
-
-

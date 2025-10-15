@@ -1,13 +1,5 @@
 import pyodbc
-from config import CONNECTION_STRING
-
-def get_db_connection():
-    try:
-        conn = pyodbc.connect(CONNECTION_STRING)
-        return conn, conn.cursor()
-    except Exception as e:
-        print("Error al conectar con la base:", e)
-        return None, None
+from db import get_db_connection
 
 
 def cargar_articulos():

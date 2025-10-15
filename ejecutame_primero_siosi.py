@@ -76,6 +76,20 @@ def crear_tablas():
         )
         """)
         
+        # --- Tabla de Proveedores ---
+        cursor.execute("""
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='proveedores' AND xtype='U')
+        CREATE TABLE proveedores (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            nombre VARCHAR(255) NOT NULL,
+            cuit VARCHAR(20) UNIQUE,
+            telefono VARCHAR(50),
+            email VARCHAR(255),
+            direccion VARCHAR(255),
+            notas TEXT
+        )
+        """)
+
         conn.commit()
         print("✅ Tablas creadas o verificadas correctamente.")
     except Exception as e:
