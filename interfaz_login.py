@@ -35,13 +35,16 @@ class LoginFrame(ttk.Frame):
 
         # Frame para botones (puede ser ttk también)
         button_frame = ttk.Frame(self)
-        button_frame.pack(fill="x", pady=10)
+        button_frame.pack(fill="x", pady=6)
 
-        btn_ingresar = ttk.Button(button_frame, text="Ingresar", command=self.intentar_login)
+        style = ttk.Style(self)
+        style.configure("Login.TButton", font=("Arial", 10), padding=(0, 1))
+
+        btn_ingresar = ttk.Button(button_frame, text="Ingresar", style="Login.TButton", command=self.intentar_login)
         btn_ingresar.pack(side="left", expand=True, fill="x", padx=(0, 5))
         
-        btn_cancelar = ttk.Button(button_frame, text="Cancelar", command=self.on_cancel) 
-        btn_cancelar.pack(side="right", expand=True, fill="x", padx=(5, 0))
+        btn_cancelar = ttk.Button(button_frame, text="Cancelar", style="Login.TButton", command=self.on_cancel) 
+        btn_cancelar.pack(side="right", expand=True, fill="x", padx=(0, 5))
 
         self.master.bind('<Return>', lambda event: self.intentar_login())
         self.master.protocol("WM_DELETE_WINDOW", self.on_cancel) 
