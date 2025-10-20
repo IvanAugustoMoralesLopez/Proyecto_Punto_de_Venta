@@ -1,6 +1,9 @@
 import os
 
+print("[DEBUG] Iniciando config.py...")
+
 ENTORNO = 'local' 
+print(f"[DEBUG] config.py: ENTORNO = {ENTORNO}")
 
 CONFIG_LOCAL = {
     'server': 'localhost' , 
@@ -20,27 +23,37 @@ CONFIG_INSTITUTO = {
 
 CONNECTION_STRING = ""
 
-if ENTORNO == 'local':
-    # Crea el string para la conexión local (Autenticación de Windows)
-    SERVER = CONFIG_LOCAL['server']
-    DATABASE = CONFIG_LOCAL['database']
-    CONNECTION_STRING = (
-        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-        f"SERVER={SERVER};"
-        f"DATABASE={DATABASE};"
-        f"Trusted_Connection=yes;"
-    )
+try:
+    if ENTORNO == 'local':
+        print("[DEBUG] config.py: Creando CONNECTION_STRING para 'local'...")
+        # Crea el string para la conexión local (Autenticación de Windows)
+        SERVER = CONFIG_LOCAL['server']
+        DATABASE = CONFIG_LOCAL['database']
+        CONNECTION_STRING = (
+            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            f"SERVER={SERVER};"
+            f"DATABASE={DATABASE};"
+            f"Trusted_Connection=yes;"
+        )
 
-elif ENTORNO == 'instituto':
-    # Crea el string para la conexión del instituto (Autenticación de SQL Server)
-    SERVER = CONFIG_INSTITUTO['server']
-    DATABASE = CONFIG_INSTITUTO['database']
-    UID = CONFIG_INSTITUTO['user']
-    PWD = CONFIG_INSTITUTO['password']
-    CONNECTION_STRING = (
-        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-        f"SERVER={SERVER};"
-        f"DATABASE={DATABASE};"
-        f"UID={UID};"
-        f"PWD={PWD};"
-    )
+    elif ENTORNO == 'instituto':
+        print("[DEBUG] config.py: Creando CONNECTION_STRING para 'instituto'...")
+        # Crea el string para la conexión del instituto (Autenticación de SQL Server)
+        SERVER = CONFIG_INSTITUTO['server']
+        DATABASE = CONFIG_INSTITUTO['database']
+        UID = CONFIG_INSTITUTO['user']
+        PWD = CONFIG_INSTITUTO['password']
+        CONNECTION_STRING = (
+            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            f"SERVER={SERVER};"
+            f"DATABASE={DATABASE};"
+            f"UID={UID};"
+            f"PWD={PWD};"
+        )
+    
+    print("[DEBUG] config.py: CONNECTION_STRING creada exitosamente.")
+
+except Exception as e:
+    print(f"[ERROR] config.py: Falló al crear CONNECTION_STRING: {e}")
+
+print("[DEBUG] config.py: Archivo importado.")

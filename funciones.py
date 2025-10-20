@@ -1,7 +1,10 @@
 import pyodbc
 from db import get_db_connection
 from datetime import datetime
+import hashlib
 from decimal import Decimal, InvalidOperation
+
+print("[DEBUG] Iniciando funciones.py...")
 
 def agregar_articulo(codigo, descripcion, precio, stock):
     conn, cursor = get_db_connection()
@@ -115,11 +118,14 @@ class Ticket:
             if conn: conn.close()
 
 def verificar_caja_abierta():
+    print("[DEBUG] funciones.py: Llamando a verificar_caja_abierta()...")
     conn, cursor = get_db_connection()
     if not conn: return None
     try:
         cursor.execute("SELECT id, monto_inicial FROM caja WHERE estado = 'abierta'")
-        return cursor.fetchone()
+        resultado = cursor.fetchone()
+        print(f"[DEBUG] funciones.py: verificar_caja_abierta() encontró: {resultado}")
+        return resultado
     except Exception as e:
         print(f"Error al verificar el estado de la caja: {e}")
         return None
@@ -127,6 +133,7 @@ def verificar_caja_abierta():
         if conn: conn.close()
 
 def abrir_caja(monto_inicial):
+    print("[DEBUG] funciones.py: Llamando a abrir_caja()...")
     conn, cursor = get_db_connection()
     if not conn: return None
     try:
@@ -134,7 +141,9 @@ def abrir_caja(monto_inicial):
         cursor.execute(sql, (datetime.now(), monto_inicial, 'abierta'))
         conn.commit()
         cursor.execute("SELECT @@IDENTITY AS id")
-        return cursor.fetchone()[0]
+        id_creado = cursor.fetchone()[0]
+        print(f"[DEBUG] funciones.py: Caja abierta con ID: {id_creado}")
+        return id_creado
     except Exception as e:
         print(f"Error al abrir caja: {e}")
         return None
@@ -202,8 +211,6 @@ def cerrar_caja(id_sesion, monto_inicial, monto_final_real, ventas_sesion):
     finally:
         if conn: conn.close()
 
-#NUEVAS FUNCIONES PARA PROVEEDORES
-
 def agregar_proveedor(nombre, cuit, telefono, email, direccion, notas):
     conn, cursor = get_db_connection()
     if not conn: return
@@ -254,3 +261,186 @@ def borrar_proveedor(id):
         print(f"Error al borrar el proveedor: {e}")
     finally:
         if conn: conn.close()
+
+def hash_password(password):
+    """Genera un hash SHA-256"""
+    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+
+def verificar_usuario(username, password):
+    print(f"[DEBUG] funciones.py: Llamando a verificar_usuario() para usuario: {username}")
+    conn, cursor = get_db_connection()
+    if not conn: 
+        print("[ERROR] funciones.py: verificar_usuario no pudo obtener conexión.")
+        return None
+    
+    try:
+        # Buscamos al usuario
+        print(f"[DEBUG] funciones.py: Ejecutando SELECT sobre tabla 'usuarios'...")
+        cursor.execute("SELECT password_hash, nombre_completo, rol FROM usuarios WHERE username = ?", (username,))
+        usuario = cursor.fetchone()
+        print(f"[DEBUG] funciones.py: Consulta a BD devolvió: {usuario}")
+        
+        if usuario:
+            # Si el usuario existe, hasheamos la contraseña ingresada
+            password_ingresada_hash = hash_password(password)
+            
+            # Comparamos el hash de la BD con el hash que acabamos de crear
+            if password_ingresada_hash == usuario.password_hash:
+                print("[DEBUG] funciones.py: ¡Contraseña VÁLIDA!")
+                return {"nombre": usuario.nombre_completo, "rol": usuario.rol}
+            else:
+                print("[DEBUG] funciones.py: Contraseña INCORRECTA.")
+        
+        # Si el usuario no existe o la contraseña es incorrecta
+        print("[DEBUG] funciones.py: Usuario no encontrado o contraseña no coincide.")
+        return None
+        
+    except Exception as e:
+        print(f"[ERROR] funciones.py: Error al verificar usuario: {e}")
+        print("    Asegúrate de que la tabla 'usuarios' exista. Ejecuta 'ejecutame_primero_siosi.py'.")
+        return None
+    finally:
+        if conn:
+            print("[DEBUG] funciones.py: Cerrando conexión de verificar_usuario.")
+            conn.close()
+
+def listar_usuarios():
+    """Obtiene todos los usuarios de la base de datos (sin el hash)."""
+    print("[DEBUG] funciones.py: Llamando a listar_usuarios()...")
+    conn, cursor = get_db_connection()
+    if not conn: 
+        print("[ERROR] funciones.py: listar_usuarios no pudo obtener conexión.")
+        return []
+    try:
+        # Seleccionamos id, username, nombre_completo, rol (NO el password_hash)
+        cursor.execute("SELECT id, username, nombre_completo, rol FROM usuarios ORDER BY username")
+        usuarios = cursor.fetchall()
+        print(f"[DEBUG] funciones.py: listar_usuarios encontró {len(usuarios)} usuarios.")
+        return usuarios
+    except Exception as e:
+        print(f"[ERROR] funciones.py: Error al listar usuarios: {e}")
+        return []
+    finally:
+        if conn:
+            print("[DEBUG] funciones.py: Cerrando conexión de listar_usuarios.")
+            conn.close()
+
+def agregar_usuario(username, nombre, rol, password):
+    """Agrega un nuevo usuario a la base de datos, hasheando la contraseña."""
+    print(f"[DEBUG] funciones.py: Llamando a agregar_usuario() para '{username}'...")
+    conn, cursor = get_db_connection()
+    if not conn: 
+        print("[ERROR] funciones.py: agregar_usuario no pudo obtener conexión.")
+        raise Exception("No se pudo conectar a la base de datos.") # Raise exception to notify UI
+    
+    if not username or not password or not rol:
+         raise ValueError("Username, Rol y Contraseña son obligatorios para nuevos usuarios.")
+
+    try:
+        # Hashear la contraseña antes de guardarla
+        password_hash = hash_password(password)
+        print("[DEBUG] funciones.py: Contraseña hasheada.")
+        
+        sql = "INSERT INTO usuarios (username, nombre_completo, rol, password_hash) VALUES (?, ?, ?, ?)"
+        cursor.execute(sql, (username, nombre, rol, password_hash))
+        conn.commit()
+        print(f"[DEBUG] funciones.py: Usuario '{username}' agregado exitosamente.")
+    except pyodbc.IntegrityError:
+         # Error común si el username ya existe (UNIQUE constraint)
+         print(f"[ERROR] funciones.py: Error de integridad al agregar '{username}' (¿Username duplicado?).")
+         raise Exception(f"El username '{username}' ya existe.") 
+    except Exception as e:
+        print(f"[ERROR] funciones.py: Error al agregar usuario '{username}': {e}")
+        conn.rollback() # Deshacer si algo falló
+        raise Exception(f"Error inesperado al agregar usuario: {e}") # Re-lanzar para la UI
+    finally:
+        if conn:
+            print("[DEBUG] funciones.py: Cerrando conexión de agregar_usuario.")
+            conn.close()
+
+def editar_usuario(id_usuario, username, nombre, rol, password=None):
+    """Edita un usuario existente. Solo actualiza la contraseña si se proporciona una nueva."""
+    print(f"[DEBUG] funciones.py: Llamando a editar_usuario() para ID: {id_usuario}...")
+    conn, cursor = get_db_connection()
+    if not conn: 
+        print("[ERROR] funciones.py: editar_usuario no pudo obtener conexión.")
+        raise Exception("No se pudo conectar a la base de datos.")
+        
+    if not id_usuario or not username or not rol:
+         raise ValueError("ID, Username y Rol son obligatorios para editar.")
+
+    
+    if username == 'admin':
+         print("[WARN] funciones.py: Intento de editar datos críticos del usuario 'admin'. Se permite cambio de nombre/rol/pass, no username.")
+         
+    try:
+        if password: # Si se proporcionó una nueva contraseña
+            print("[DEBUG] funciones.py: Se proporcionó nueva contraseña. Hasheando...")
+            password_hash = hash_password(password)
+            sql = """UPDATE usuarios 
+                     SET nombre_completo = ?, rol = ?, password_hash = ? 
+                     WHERE id = ? AND username = ?""" # Usamos username como seguridad extra
+            params = (nombre, rol, password_hash, id_usuario, username)
+        else: # No se proporcionó contraseña, no la actualizamos
+            print("[DEBUG] funciones.py: No se proporcionó nueva contraseña. Se mantiene la actual.")
+            sql = """UPDATE usuarios 
+                     SET nombre_completo = ?, rol = ? 
+                     WHERE id = ? AND username = ?"""
+            params = (nombre, rol, id_usuario, username)
+            
+        cursor.execute(sql, params)
+        
+        # Verificar si se actualizó alguna fila
+        if cursor.rowcount == 0:
+             print(f"[ERROR] funciones.py: No se encontró el usuario con ID {id_usuario} y Username '{username}' para editar.")
+             raise Exception("Usuario no encontrado o no se pudo editar (¿Username incorrecto?).")
+             
+        conn.commit()
+        print(f"[DEBUG] funciones.py: Usuario ID {id_usuario} editado exitosamente.")
+    except Exception as e:
+        print(f"[ERROR] funciones.py: Error al editar usuario ID {id_usuario}: {e}")
+        conn.rollback()
+        raise Exception(f"Error inesperado al editar usuario: {e}")
+    finally:
+        if conn:
+            print("[DEBUG] funciones.py: Cerrando conexión de editar_usuario.")
+            conn.close()
+
+def borrar_usuario(id_usuario):
+    """Elimina un usuario de la base de datos."""
+    print(f"[DEBUG] funciones.py: Llamando a borrar_usuario() para ID: {id_usuario}...")
+    conn, cursor = get_db_connection()
+    if not conn: 
+        print("[ERROR] funciones.py: borrar_usuario no pudo obtener conexión.")
+        raise Exception("No se pudo conectar a la base de datos.")
+
+    if not id_usuario:
+        raise ValueError("Se requiere un ID para borrar el usuario.")
+
+    try:
+        cursor.execute("SELECT username FROM usuarios WHERE id = ?", (id_usuario,))
+        user_result = cursor.fetchone()
+        if user_result and user_result.username == 'admin':
+             print("[ERROR] funciones.py: Intento de borrar al usuario 'admin'. OPERACIÓN DENEGADA.")
+             raise Exception("No se puede eliminar al usuario administrador principal ('admin').")
+
+        # Si no es admin, proceder a borrar
+        sql = "DELETE FROM usuarios WHERE id = ?"
+        cursor.execute(sql, (id_usuario,))
+        
+        if cursor.rowcount == 0:
+             print(f"[ERROR] funciones.py: No se encontró el usuario con ID {id_usuario} para borrar.")
+             raise Exception("Usuario no encontrado para eliminar.")
+             
+        conn.commit()
+        print(f"[DEBUG] funciones.py: Usuario ID {id_usuario} borrado exitosamente.")
+    except Exception as e:
+        print(f"[ERROR] funciones.py: Error al borrar usuario ID {id_usuario}: {e}")
+        conn.rollback()
+        raise e 
+    finally:
+        if conn:
+            print("[DEBUG] funciones.py: Cerrando conexión de borrar_usuario.")
+            conn.close()
+
+print("[DEBUG] funciones.py: Archivo importado.")
