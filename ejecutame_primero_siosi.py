@@ -1,21 +1,29 @@
 import pyodbc
 from config import CONNECTION_STRING
 
+print("[DEBUG] Iniciando ejecutame_primero_siosi.py...")
+
 def get_db_connection():
+    print("[DEBUG] ejecutame: Llamando a get_db_connection()...")
     try:
+        print("[DEBUG] ejecutame: Intentando pyodbc.connect()...")
         conn = pyodbc.connect(CONNECTION_STRING)
+        print("[DEBUG] ejecutame: Conexión CREADA.")
         return conn, conn.cursor()
     except Exception as e:
-        print("Error al conectar con la base:", e)
+        print("❌ [ERROR] ejecutame: Error al conectar con la base:", e)
         return None, None
 
 def crear_tablas():
+    print("[DEBUG] ejecutame: Iniciando crear_tablas()...")
     conn, cursor = get_db_connection()
     if not conn:
+        print("[ERROR] ejecutame: No hay conexión. Abortando creación de tablas.")
         return
 
     try:
         # --- Tabla de Artículos ---
+        print("[DEBUG] ejecutame: Creando tabla 'articulos'...")
         cursor.execute("""
         IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='articulos' AND xtype='U')
         CREATE TABLE articulos (
@@ -28,6 +36,7 @@ def crear_tablas():
         """)
 
         # --- Tabla de Caja ---
+        print("[DEBUG] ejecutame: Creando tabla 'caja'...")
         cursor.execute("""
         IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='caja' AND xtype='U')
         CREATE TABLE caja (
@@ -46,6 +55,7 @@ def crear_tablas():
         """)
         
         # --- Tabla de Tickets ---
+        print("[DEBUG] ejecutame: Creando tabla 'tickets'...")
         cursor.execute("""
         IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='tickets' AND xtype='U')
         CREATE TABLE tickets (
@@ -62,6 +72,7 @@ def crear_tablas():
         """)
 
         # --- Tabla de Detalle de Ticket ---
+        print("[DEBUG] ejecutame: Creando tabla 'detalle_ticket'...")
         cursor.execute("""
         IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='detalle_ticket' AND xtype='U')
         CREATE TABLE detalle_ticket (
@@ -77,6 +88,7 @@ def crear_tablas():
         """)
         
         # --- Tabla de Proveedores ---
+        print("[DEBUG] ejecutame: Creando tabla 'proveedores'...")
         cursor.execute("""
         IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='proveedores' AND xtype='U')
         CREATE TABLE proveedores (
@@ -90,12 +102,35 @@ def crear_tablas():
         )
         """)
 
+        # --- Tabla de Usuarios ---
+        print("[DEBUG] ejecutame: Creando tabla 'usuarios'...")
+        cursor.execute("""
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='usuarios' AND xtype='U')
+        CREATE TABLE usuarios (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            password_hash VARCHAR(64) NOT NULL,
+            nombre_completo VARCHAR(255),
+            rol VARCHAR(50) DEFAULT 'vendedor'
+        )
+        """)
+
+        #usuario "admin" por defecto
+        print("[DEBUG] ejecutame: Insertando usuario 'admin' (si no existe)...")
+        cursor.execute("""
+        IF NOT EXISTS (SELECT 1 FROM usuarios WHERE username = 'admin')
+        INSERT INTO usuarios (username, password_hash, nombre_completo, rol)
+        VALUES ('admin', '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', 'Administrador del Sistema', 'admin')
+        """)
+
+        print("[DEBUG] ejecutame: Aplicando 'COMMIT' a la base de datos...")
         conn.commit()
         print("✅ Tablas creadas o verificadas correctamente.")
     except Exception as e:
         print("❌ Error al crear tablas:", e)
     finally:
         if conn:
+            print("[DEBUG] ejecutame: Cerrando conexión.")
             conn.close()
 
 if __name__ == "__main__":

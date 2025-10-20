@@ -1,3 +1,5 @@
+print("[DEBUG] Iniciando main.py (V3.3 - Import Corregido)...")
+print("[DEBUG] main.py: Importando librerías...")
 import tkinter as tk
 from tkinter import ttk, messagebox
 import funciones
@@ -11,32 +13,103 @@ from datetime import datetime
 from generar_pdf_tkinter import abrir_ventana_pdf
 from interfaz import ventana_cobro, mostrar_ultimos_tickets
 from decimal import Decimal, InvalidOperation
-from interfaz_proveedores import abrir_ventana_proveedores 
+from interfaz_proveedores import abrir_ventana_proveedores
+from interfaz_login import LoginFrame
+from interfaz_usuarios import abrir_ventana_gestion_usuarios
+import traceback
+print("[DEBUG] main.py: Imports terminados.")
 
 class PuntoDeVentaApp:
     def __init__(self, root):
+        print("[DEBUG] main.py: PuntoDeVentaApp.__init__ INICIADO.")
         self.root = root
-        self.root.title("Punto de Venta")
         
-        # --- Convertir globales a atributos de instancia ---
         self.articulos_agregados = []
         self.checks_articulos = []
         self.id_sesion_actual = None
         self.monto_inicial_caja = Decimal("0.00")
         self.lista_articulos_completa = []
         self.mapa_articulos = {}
+        self.usuario_actual = None
+        self.login_frame = None
+        self.main_widgets_created = False
+        print("[DEBUG] main.py: __init__: Variables de instancia creadas.")
 
-        # Configurar la ventana principal
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        self.root.geometry(f"{screen_width}x{screen_height}")
-
-        # Crear los widgets de la interfaz
-        self._crear_widgets()
-
+        print("[DEBUG] main.py: __init__: Creando LoginFrame...")
+        self.login_frame = LoginFrame(master=self.root,
+                                       on_success=self._on_login_success,
+                                       on_cancel=self._on_login_cancel)
+        self.login_frame.pack(fill="both", expand=True)
+        print("[DEBUG] main.py: __init__: LoginFrame CREADO y mostrado.")
         
-        self.root.withdraw() # Ocultamos la ventana principal temporalmente OJO
-        self.root.after(100, self._ventana_apertura_caja)
+        print("[DEBUG] main.py: __init__ TERMINADO (esperando acción en LoginFrame).")
+
+    def _on_login_success(self, usuario_info):
+        """Callback llamado por LoginFrame cuando el login es exitoso."""
+        print("[DEBUG] main.py: _on_login_success INICIADO.")
+        self.usuario_actual = usuario_info
+        print(f"Bienvenido {self.usuario_actual['nombre']} (Rol: {self.usuario_actual['rol']})")
+        
+        if self.login_frame:
+            print("[DEBUG] main.py: Destruyendo LoginFrame...")
+            self.login_frame.destroy()
+            self.login_frame = None
+            self.root.unbind('<Return>')
+            self.root.protocol("WM_DELETE_WINDOW", self.root.destroy)
+        
+        print("[DEBUG] main.py: Llamando a _iniciar_interfaz_principal...")
+        self._iniciar_interfaz_principal()
+
+    def _on_login_cancel(self):
+        """Callback llamado por LoginFrame si se cancela."""
+        print("[DEBUG] main.py: _on_login_cancel INICIADO. Cerrando aplicación.")
+        self.root.destroy()
+
+    def _iniciar_interfaz_principal(self):
+        """Se llama después de un login exitoso para configurar la app principal."""
+        print("[DEBUG] main.py: _iniciar_interfaz_principal INICIADO.")
+        try:
+            print("[DEBUG] main.py: Llamando a _ventana_apertura_caja...")
+            caja_abierta_exitosamente = self._ventana_apertura_caja()
+            print(f"[DEBUG] main.py: _ventana_apertura_caja devolvió: {caja_abierta_exitosamente}")
+            
+            if not caja_abierta_exitosamente:
+                self.root.destroy()
+                print("[DEBUG] main.py: Apertura de caja cancelada. App cerrada.")
+                return
+
+            print("[DEBUG] main.py: Configurando geometría de ventana principal...")
+            self.root.geometry("")
+            screen_width = self.root.winfo_screenwidth()
+            screen_height = self.root.winfo_screenheight()
+            self.root.geometry(f"{screen_width}x{screen_height}")
+            self.root.resizable(True, True)
+            
+            if not self.main_widgets_created:
+                print("[DEBUG] main.py: Llamando a _crear_widgets...")
+                self._crear_widgets()
+                self.main_widgets_created = True
+                print("[DEBUG] main.py: _crear_widgets TERMINÓ.")
+            else:
+                 print("[DEBUG] main.py: Widgets principales ya existen, omitiendo creación.")
+
+            self.root.title(f"Punto de Venta - Usuario: {self.usuario_actual['nombre']}")
+            self.root.deiconify()
+            print("[DEBUG] main.py: ¡INICIO COMPLETO!")
+
+        except Exception as e:
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print("!!!!   ERROR FATAL EN LA INTERFAZ PRINCIPAL (post-login)   !!!!")
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            error_completo = traceback.format_exc()
+            print(error_completo)
+            
+            messagebox.showerror("Error Crítico al Iniciar Interfaz",
+                                 f"No se pudo iniciar la interfaz principal.\n\n"
+                                 f"Error: {e}\n\n"
+                                 f"Detalles:\n{error_completo}\n\n"
+                                 f"La aplicación se cerrará.")
+            self.root.destroy()
 
     def _crear_widgets(self):
         # --- Frames Principales ---
@@ -46,7 +119,7 @@ class PuntoDeVentaApp:
         parte_busqueda = tk.Frame(self.root, bg="#CFCFCF", height=40)
         parte_busqueda.pack(fill="x")
 
-        body = tk.Frame(self.root, bg="#CFCFCF") 
+        body = tk.Frame(self.root, bg="#CFCFCF")
         body.pack(fill="both", expand=True)
 
         # --- Frame para la Grilla con Scroll ---
@@ -96,11 +169,11 @@ class PuntoDeVentaApp:
         tk.Button(header_opciones, text="Graficos de venta", padx=10, pady=1, font=("Inter", 8), command=self.mostrar_graficos).pack(side="left", padx=15, pady=5)
         tk.Button(header_opciones, text="Generar Ticket Sim.", padx=10, pady=1, font=("Inter", 8), command=creartickets).pack(side="left", padx=8, pady=5)
         tk.Button(header_opciones, text="Generar PDF", padx=10, pady=1, font=("Inter", 8), command=lambda: abrir_ventana_pdf(self.root)).pack(side="left", padx=8, pady=5)
-        
-        # <<<--- 2. AQUÍ AGREGAMOS EL NUEVO BOTÓN ---
         tk.Button(header_opciones, text="Proveedores", padx=10, pady=1, font=("Inter", 8), command=lambda: abrir_ventana_proveedores(self.root)).pack(side="left", padx=8, pady=5)
         
-        tk.Button(header_opciones, text="Cerrar Caja", padx=10, pady=1, bg="#ffdddd", font=("Inter", 8), command=self.gestionar_cierre_caja).pack(side="right", padx=10, pady=1)
+        tk.Button(header_opciones, text="Cerrar Caja", padx=10, pady=1, bg="#ffdddd", font=("Inter", 8), command=self.gestionar_cierre_caja).pack(side="right", padx=10, pady=5)
+        tk.Button(header_opciones, text="Configuración", padx=10, pady=1, font=("Inter", 8), command=self._abrir_ventana_usuarios).pack(side="right", padx=5, pady=5) 
+
 
         # --- Botones del Body ---
         tk.Label(body, text="Totales de Venta:").place(relx=0.81, rely=0.030)
@@ -113,8 +186,22 @@ class PuntoDeVentaApp:
 
         self._mostrar_encabezados()
 
-    
+    def _abrir_ventana_usuarios(self):
+        """Abre la ventana de gestión de usuarios."""
+        print("[INFO] Click en Configuración -> Llamando a abrir_ventana_gestion_usuarios...")
+        
+        if self.usuario_actual and self.usuario_actual.get('rol') == 'admin':
+            
+            abrir_ventana_gestion_usuarios(self.root) 
+        else:
+             print("[WARN] main.py: Intento de acceso a gestión de usuarios por un no-admin.")
+             messagebox.showerror("Acceso Denegado", 
+                                  "Solo los usuarios con rol 'admin' pueden gestionar usuarios.", 
+                                  parent=self.root)
+
+
     def cargar_lista_completa_articulos(self):
+        print("[DEBUG] main.py: Cargando lista completa de artículos...")
         articulos_db = funciones.listar_articulos()
         self.lista_articulos_completa.clear()
         self.mapa_articulos.clear()
@@ -122,6 +209,7 @@ class PuntoDeVentaApp:
             texto_display = f"{art[2]} - ${art[3]:.2f}"
             self.lista_articulos_completa.append(texto_display)
             self.mapa_articulos[texto_display] = {"id": art[0], "codigo": art[1], "descripcion": art[2], "precio": art[3]}
+        print(f"[DEBUG] main.py: {len(self.lista_articulos_completa)} artículos cargados.")
 
     def actualizar_sugerencias(self, event=None):
         texto_actual = self.barra_busca.get()
@@ -202,46 +290,65 @@ class PuntoDeVentaApp:
         ttk.Button(frame, text="Confirmar Descuento", command=confirmar_descuento).pack(pady=15, ipady=5)
 
     def _ventana_apertura_caja(self):
+        print("[DEBUG] main.py: INICIADA funcion _ventana_apertura_caja().")
+        
         caja_existente = funciones.verificar_caja_abierta()
         if caja_existente:
             if messagebox.askyesno("Caja Abierta", "Ya existe una sesión de caja abierta. ¿Desea continuar con esa sesión?"):
                 self.id_sesion_actual, self.monto_inicial_caja = caja_existente
                 self.monto_inicial_caja = Decimal(str(self.monto_inicial_caja))
                 self.cargar_lista_completa_articulos()
-                self.root.deiconify() # Mostramos la ventana principal
-                return
+                return True 
             else:
-                self.root.destroy()
-                return
+                return False 
 
+        apertura_exitosa = [False]
+
+        print("[DEBUG] main.py: Creando ventana Toplevel de Apertura de Caja...")
         apertura_win = tk.Toplevel(self.root)
         apertura_win.title("Apertura de Caja")
         apertura_win.geometry("300x150")
         apertura_win.resizable(False, False)
         apertura_win.transient(self.root)
-        apertura_win.grab_set()
+        apertura_win.grab_set() 
         tk.Label(apertura_win, text="Ingrese el monto inicial en caja:", font=("Arial", 10)).pack(pady=10)
         entry_monto = tk.Entry(apertura_win, font=("Arial", 12), justify='center')
         entry_monto.pack(pady=5, padx=20, fill='x')
         entry_monto.focus()
+        print("[DEBUG] main.py: Ventana Apertura de Caja CREADA.")
 
         def confirmar_apertura():
+            print("[DEBUG] main.py: Clic en 'Confirmar Apertura'.")
             try:
                 monto_str = entry_monto.get().replace(",",".")
                 monto_decimal = Decimal(monto_str)
                 if monto_decimal < 0: raise ValueError("El monto no puede ser negativo")
+                
+                print("[DEBUG] main.py: Llamando a funciones.abrir_caja...")
                 id_sesion = funciones.abrir_caja(float(monto_decimal))
                 if id_sesion:
                     self.id_sesion_actual, self.monto_inicial_caja = id_sesion, monto_decimal
                     self.cargar_lista_completa_articulos()
+                    apertura_exitosa[0] = True 
                     apertura_win.destroy()
-                    self.root.deiconify() # Mostramos la ventana principal
                 else:
                     messagebox.showerror("Error de Base de Datos", "No se pudo registrar la apertura de caja.", parent=apertura_win)
             except (ValueError, InvalidOperation) as e:
                 messagebox.showerror("Dato inválido", f"Por favor, ingrese un número válido.\n{e}", parent=apertura_win)
+        
         tk.Button(apertura_win, text="Confirmar", command=confirmar_apertura, bg="#B7E998").pack(pady=10)
-        apertura_win.protocol("WM_DELETE_WINDOW", self.root.destroy)
+        
+        def cancelar_apertura():
+             print("[DEBUG] main.py: Ventana Apertura cerrada con 'X'.")
+             apertura_exitosa[0] = False
+             apertura_win.destroy()
+        apertura_win.protocol("WM_DELETE_WINDOW", cancelar_apertura)
+
+        print("[DEBUG] main.py: Llamando a root.wait_window() para Apertura de Caja...")
+        self.root.wait_window(apertura_win)
+        
+        print(f"[DEBUG] main.py: wait_window() de Apertura TERMINÓ. Devolviendo: {apertura_exitosa[0]}")
+        return apertura_exitosa[0]
 
     def gestionar_cierre_caja(self):
         if not self.id_sesion_actual:
@@ -435,7 +542,25 @@ class PuntoDeVentaApp:
     def cobrar(self):
         ventana_cobro(self.root, self.articulos_agregados, self.limpiar_resultados, self.actualizar_totales, self.id_sesion_actual)
 
+# ----- Bloque __main__ -----
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = PuntoDeVentaApp(root)
-    root.mainloop()
+    print("[DEBUG] main.py: Entrando en __name__ == __main__")
+    try:
+        print("[DEBUG] main.py: 1. Creando root = tk.Tk()...")
+        root = tk.Tk()
+        print("[DEBUG] main.py: 1. root CREADO.")
+        
+        print("[DEBUG] main.py: 2. Creando app = PuntoDeVentaApp(root)...")
+        app = PuntoDeVentaApp(root) 
+        print("[DEBUG] main.py: 2. app CREADA.")
+        
+        print("[DEBUG] main.py: 3. Llamando a root.mainloop()... (El programa se pausará aquí y mostrará el LoginFrame)")
+        root.mainloop() 
+        print("[DEBUG] main.py: 3. root.mainloop() TERMINADO. (La app se cerró).")
+        
+    except Exception as e:
+        print(f"[ERROR] main.py: ¡¡¡ERROR FATAL en el bloque __main__!!!: {e}")
+        import traceback
+        traceback.print_exc()
+
+print("[DEBUG] main.py: Fin del script.")
