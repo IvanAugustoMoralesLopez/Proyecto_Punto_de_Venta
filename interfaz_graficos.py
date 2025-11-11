@@ -45,7 +45,7 @@ class VentanaGraficos(tk.Toplevel):
         self.combo_reporte['values'] = [
             "1. Ventas por Día (Gráfico de Línea)",
             "2. Top 10 Artículos Vendidos (Gráfico de Barras)",
-            "3. Artículos en Stock por Proveedor (Gráfico de Torta)"
+            
         ]
         self.combo_reporte.current(0)
         self.combo_reporte.grid(row=0, column=1, columnspan=2, padx=5, pady=5, sticky="w")
